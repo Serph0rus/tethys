@@ -3,17 +3,17 @@ An operating system partially inspired by the likes of Multics and Plan 9 from B
 
 ## CHECKLISTS
 ### KERNEL
-[ ] Console I/O
-[ ] Global Descriptor Table
-[ ] Interrupt Descriptor Table
-[ ] Paging
-[ ] Memory Management
-[ ] (Cooperative) Userland
-[ ] Application Binary Interface
-[ ] (Preemptive) Userland
-[ ] Multiprocessing Structures
+- [ ] Console I/O
+- [ ] Global Descriptor Table
+- [ ] Interrupt Descriptor Table
+- [ ] Paging
+- [ ] Memory Management
+- [ ] (Cooperative) Userland
+- [ ] Application Binary Interface
+- [ ] (Preemptive) Userland
+- [ ] Multiprocessing Structures
 
 ### PROGRAMS
-[ ] Userland Console
-[ ] Graphical User Interface
-[ ] Permanent Filesystem
+- [ ] Userland Console
+- [ ] Graphical User Interface
+- [ ] Permanent Filesystem
