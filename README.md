@@ -1,0 +1,2 @@
+# tethys
+An operating system.
