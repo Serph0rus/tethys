@@ -17,9 +17,11 @@ features = ["spin_no_std"]
 
 [profile.dev]
 panic = "abort"
+opt-level = 5
 
 [profile.release]
 panic = "abort"
+opt-level = 5
 
 [[bin]]
 name = "saltwater"

@@ -138,7 +138,7 @@ pub static ACPI_PLATFORM: Spinlock<Option<acpi::platform::AcpiPlatform<SystemAcp
 pub static PROCESSOR_COUNT: Spinlock<Option<usize>> = Spinlock::new(None);
 pub fn bootstrap_initialise(boot_info: &mut bootloader_api::BootInfo) {
     println!(
-        "found ACPI root system description pointer at address ({})",
+        "found ACPI root system description pointer at address 0x{:x}...",
         boot_info.rsdp_addr.into_option().unwrap()
     );
     let mut acpi_platform_guard = ACPI_PLATFORM.lock();
@@ -167,9 +167,9 @@ pub fn bootstrap_initialise(boot_info: &mut bootloader_api::BootInfo) {
             );
         }
     }
+    println!("constructed acpi platform structure...");
     PROCESSOR_COUNT.lock().insert(
-        ACPI_PLATFORM
-            .lock()
+        acpi_platform_guard
             .as_ref()
             .expect("ACPI platform could not be acquired!")
             .processor_info
@@ -180,7 +180,7 @@ pub fn bootstrap_initialise(boot_info: &mut bootloader_api::BootInfo) {
             + 1,
     );
     println!(
-        "counted {} logical processors...",
+        "counted {} logical processor/s...",
         PROCESSOR_COUNT.lock().unwrap()
     );
 }

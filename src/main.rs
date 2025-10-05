@@ -4,7 +4,6 @@ fn main() {
     // read env variables that were set in build script
     let uefi_path = env!("UEFI_PATH");
     let bios_path = env!("BIOS_PATH");
-    
     // choose whether to start the UEFI or BIOS image
     let uefi = false;
 
@@ -17,7 +16,8 @@ fn main() {
     }
     cmd.arg("-vga").arg("std");
     cmd.arg("-debugcon").arg("stdio");
-    cmd.arg("-m").arg("2048");
+    cmd.arg("-m").arg("2048M");
+    cmd.arg("-smp").arg("4");
     let mut child = cmd.spawn().unwrap();
     child.wait().unwrap();
 }

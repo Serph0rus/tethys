@@ -25,7 +25,7 @@ const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 7] = [
 bootloader_api::entry_point!(main, config = &config::BOOTLOADER_CONFIG);
 pub fn main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     println!(
-        "exited from rust bootloader {} version {}.{}.{}, entering saltwater tethys system...",
+        "exited from rust bootloader {} version {}.{}.{}, entering saltwater tethys system at address 0x{:x}...",
         if boot_info.api_version.pre_release() {
             "pre-release"
         } else {
@@ -33,7 +33,8 @@ pub fn main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
         },
         boot_info.api_version.version_major(),
         boot_info.api_version.version_minor(),
-        boot_info.api_version.version_patch()
+        boot_info.api_version.version_patch(),
+        x86_64::instructions::read_rip(),
     );
     for initialiser in INITIALISERS {
         initialiser(boot_info);
