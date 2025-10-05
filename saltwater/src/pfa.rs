@@ -83,13 +83,21 @@ impl PageFrame {
         }
         panic!("page frame allocator could not find any free page frames!")
     }
-}
-impl Drop for PageFrame {
-    fn drop(&mut self) {
+    fn drop(self: Self) {
         let mut allocator_guard = PAGE_FRAME_ALLOCATOR.lock();
         let allocator = allocator_guard.as_mut().expect(
             "page frame allocator not initialised before page frame deallocation attempted!",
         );
         allocator.bitmap[self.index / 8] &= !(1 << (self.index % 8));
+    }
+}
+unsafe impl x86_64::structures::paging::FrameAllocator<x86_64::structures::paging::Size4KiB> for BitmapPageFrameAllocator {
+    fn allocate_frame(&mut self) -> Option<x86_64::structures::paging::PhysFrame<x86_64::structures::paging::Size4KiB>> {
+        Some(x86_64::structures::paging::PhysFrame::containing_address(x86_64::PhysAddr::new((PageFrame::new().index * PAGE_SIZE) as u64)))
+    }
+}
+impl x86_64::structures::paging::FrameDeallocator<x86_64::structures::paging::Size4KiB> for BitmapPageFrameAllocator {
+    unsafe fn deallocate_frame(&mut self, frame: x86_64::structures::paging::PhysFrame<x86_64::structures::paging::Size4KiB>) {
+        PageFrame {index: (frame.start_address().as_u64() / 4096) as usize}.drop();
     }
 }
