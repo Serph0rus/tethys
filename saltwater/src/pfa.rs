@@ -52,7 +52,32 @@ pub fn initialise(boot_info: &mut bootloader_api::BootInfo) {
     }
 }
 struct PageFrame {
-    index: usize
+    pub index: usize
+}
+impl PageFrame {
+    fn new() -> PageFrame {
+        let mut allocator_guard = PAGE_FRAME_ALLOCATOR.lock();
+        let allocator = allocator_guard.as_mut().expect("page frame allocator not initialised before page frame allocation attempted!");
+        for frame in allocator.last_allocated_frame_index..allocator.bitmap.len() * 8 {
+            if allocator.bitmap[frame / 8] & (1 << (frame % 8)) == 0 {
+                allocator.bitmap[frame / 8] |= 1 << (frame % 8);
+                allocator.last_allocated_frame_index = frame;
+                return PageFrame {
+                    index: frame
+                }
+            }
+        }
+        for frame in 0..allocator.last_allocated_frame_index {
+            if allocator.bitmap[frame / 8] & (1 << (frame % 8)) == 0 {
+                allocator.bitmap[frame / 8] |= 1 << (frame % 8);
+                allocator.last_allocated_frame_index = frame;
+                return PageFrame {
+                    index: frame
+                }
+            }
+        }
+        panic!("page frame allocator could not find any free page frames!")
+    }
 }
 impl Drop for PageFrame {
     fn drop(&mut self) {
