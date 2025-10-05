@@ -17,6 +17,7 @@ fn main() {
     }
     cmd.arg("-vga").arg("std");
     cmd.arg("-debugcon").arg("stdio");
+    cmd.arg("-m").arg("2048");
     let mut child = cmd.spawn().unwrap();
     child.wait().unwrap();
 }

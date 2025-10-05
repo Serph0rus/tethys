@@ -1,6 +1,8 @@
 #![no_std]
 #![no_main]
 pub extern crate alloc;
+mod config;
+mod qemu;
 mod acpi;
 mod allocator;
 mod debugcon;
@@ -11,22 +13,8 @@ mod panic;
 mod pfa;
 mod sysstacks;
 use crate::hcf::hcf;
-pub static BOOTLOADER_CONFIG: bootloader_api::BootloaderConfig = {
-    let mut bootloader_config = bootloader_api::BootloaderConfig::new_default();
-    bootloader_config.mappings.kernel_base =
-        bootloader_api::config::Mapping::FixedAddress(mapping::SYSTEM_CODE);
-    bootloader_config.mappings.framebuffer =
-        bootloader_api::config::Mapping::FixedAddress(mapping::FRAMEBUFFER);
-    bootloader_config.mappings.kernel_stack = bootloader_api::config::Mapping::FixedAddress(
-        mapping::system_stack_virtual_address(0) + mapping::SYSTEM_STACK_SIZE,
-    );
-    bootloader_config.kernel_stack_size = mapping::SYSTEM_STACK_SIZE;
-    bootloader_config.mappings.physical_memory = Some(
-        bootloader_api::config::Mapping::FixedAddress(mapping::DIRECT_PHYSICAL),
-    );
-    bootloader_config
-};
-const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 6] = [
+const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 7] = [
+    mapping::initialise,
     gdt::bootstrap_initialise,
     allocator::bootstrap_initialise,
     acpi::bootstrap_initialise,
@@ -34,10 +22,10 @@ const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 6] = [
     gdt::initialise,
     sysstacks::initialise,
 ];
-bootloader_api::entry_point!(main);
+bootloader_api::entry_point!(main, config = &config::BOOTLOADER_CONFIG);
 pub fn main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     println!(
-        "exited from rust bootloader {} version {}.{}.{}...",
+        "exited from rust bootloader {} version {}.{}.{}, entering saltwater tethys system...",
         if boot_info.api_version.pre_release() {
             "pre-release"
         } else {
@@ -47,14 +35,9 @@ pub fn main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
         boot_info.api_version.version_minor(),
         boot_info.api_version.version_patch()
     );
-    println!("entering saltwater tethys kernel...");
-    boot_info
-        .physical_memory_offset
-        .into_option()
-        .expect("bootloader did not provide higher-half direct memory map!");
     for initialiser in INITIALISERS {
         initialiser(boot_info);
     }
-    println!("exiting to halt-and-catch-fire loop...");
+    println!("successfully initialised saltwater tethys system!");
     hcf();
 }
