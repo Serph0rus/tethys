@@ -1,0 +1,14 @@
+[package]
+name = "tethys"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ovmf-prebuilt = "0.1.0-alpha.1"
+
+[build-dependencies]
+bootloader = "0.11.12"
+saltwater = { path = "saltwater", artifact = "bin", target = "x86_64-unknown-none" }
+
+[workspace]
+members = ["saltwater"]
