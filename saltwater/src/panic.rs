@@ -1,5 +1,5 @@
-use core::panic::PanicInfo;
 use crate::hcf::hcf;
+use core::panic::PanicInfo;
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     hcf()
