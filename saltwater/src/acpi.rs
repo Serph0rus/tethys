@@ -1,4 +1,4 @@
-use crate::mapping::physical_to_virtual_address;
+use crate::{mapping::physical_to_virtual_address, println};
 use acpi::platform::AcpiPlatform;
 use core::ptr::NonNull;
 use spinning_top::Spinlock;
@@ -137,24 +137,29 @@ pub static ACPI_PLATFORM: Spinlock<Option<acpi::platform::AcpiPlatform<SystemAcp
     Spinlock::new(None);
 pub static PROCESSOR_COUNT: Spinlock<Option<usize>> = Spinlock::new(None);
 pub fn bootstrap_initialise(boot_info: &mut bootloader_api::BootInfo) {
-    match ACPI_PLATFORM.lock().as_ref() {
+    println!(
+        "found ACPI root system description pointer at address ({})",
+        boot_info.rsdp_addr.into_option().unwrap()
+    );
+    let mut acpi_platform_guard = ACPI_PLATFORM.lock();
+    println!("acquired acpi platform guard...");
+    match acpi_platform_guard.as_ref() {
         Some(..) => panic!("ACPI platform initialised before ACPI bootstrap initialiser called!"),
         None => {
-            ACPI_PLATFORM.lock().insert(
+            acpi_platform_guard.insert(
                 acpi::platform::AcpiPlatform::new(
                     unsafe {
-                        acpi::AcpiTables::from_rsdp(
+                        let acpi_tables = acpi::AcpiTables::from_rsdp(
                             SYSTEM_ACPI_HANDLER.clone(),
-                            match boot_info.rsdp_addr {
-                                bootloader_api::info::Optional::Some(rsdp_addr) => {
-                                    rsdp_addr as usize
-                                }
-                                bootloader_api::info::Optional::None => {
-                                    panic!("bootloader did not provide RSDP address!")
-                                }
-                            },
+                            boot_info
+                                .rsdp_addr
+                                .into_option()
+                                .expect("bootloader did not provide RSDP address!")
+                                as usize,
                         )
-                        .unwrap()
+                        .unwrap();
+                        println!("parsed bootstrap ACPI tables...");
+                        acpi_tables
                     },
                     SYSTEM_ACPI_HANDLER.clone(),
                 )
@@ -173,5 +178,9 @@ pub fn bootstrap_initialise(boot_info: &mut bootloader_api::BootInfo) {
             .application_processors
             .len()
             + 1,
+    );
+    println!(
+        "counted {} logical processors...",
+        PROCESSOR_COUNT.lock().unwrap()
     );
 }

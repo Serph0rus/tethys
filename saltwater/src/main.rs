@@ -3,11 +3,13 @@
 pub extern crate alloc;
 mod acpi;
 mod allocator;
+mod debugcon;
 mod gdt;
 mod hcf;
 mod mapping;
 mod panic;
 mod pfa;
+mod sysstacks;
 use crate::hcf::hcf;
 pub static BOOTLOADER_CONFIG: bootloader_api::BootloaderConfig = {
     let mut bootloader_config = bootloader_api::BootloaderConfig::new_default();
@@ -24,16 +26,35 @@ pub static BOOTLOADER_CONFIG: bootloader_api::BootloaderConfig = {
     );
     bootloader_config
 };
-const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 4] = [
+const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 6] = [
     gdt::bootstrap_initialise,
     allocator::bootstrap_initialise,
     acpi::bootstrap_initialise,
+    pfa::initialise,
     gdt::initialise,
+    sysstacks::initialise,
 ];
 bootloader_api::entry_point!(main);
 pub fn main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
+    println!(
+        "exited from rust bootloader {} version {}.{}.{}...",
+        if boot_info.api_version.pre_release() {
+            "pre-release"
+        } else {
+            "release"
+        },
+        boot_info.api_version.version_major(),
+        boot_info.api_version.version_minor(),
+        boot_info.api_version.version_patch()
+    );
+    println!("entering saltwater tethys kernel...");
+    boot_info
+        .physical_memory_offset
+        .into_option()
+        .expect("bootloader did not provide higher-half direct memory map!");
     for initialiser in INITIALISERS {
         initialiser(boot_info);
     }
+    println!("exiting to halt-and-catch-fire loop...");
     hcf();
 }

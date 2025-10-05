@@ -16,6 +16,7 @@ fn main() {
         cmd.arg("-drive").arg(format!("format=raw,file={bios_path}"));
     }
     cmd.arg("-vga").arg("std");
+    cmd.arg("-debugcon").arg("stdio");
     let mut child = cmd.spawn().unwrap();
     child.wait().unwrap();
 }

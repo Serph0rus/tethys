@@ -58,11 +58,11 @@ pub fn initialise(boot_info: &mut bootloader_api::BootInfo) {
         allocator.bitmap[frame / 8] |= 1 << (frame % 8);
     }
 }
-struct PageFrame {
-    pub index: usize,
+pub struct PageFrame {
+    index: usize,
 }
 impl PageFrame {
-    fn new() -> PageFrame {
+    pub fn new() -> PageFrame {
         let mut allocator_guard = PAGE_FRAME_ALLOCATOR.lock();
         let allocator = allocator_guard
             .as_mut()
@@ -83,7 +83,7 @@ impl PageFrame {
         }
         panic!("page frame allocator could not find any free page frames!")
     }
-    fn drop(self: Self) {
+    pub fn drop(self: Self) {
         let mut allocator_guard = PAGE_FRAME_ALLOCATOR.lock();
         let allocator = allocator_guard.as_mut().expect(
             "page frame allocator not initialised before page frame deallocation attempted!",
