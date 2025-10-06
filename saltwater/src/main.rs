@@ -14,13 +14,12 @@ mod panic;
 mod pfa;
 mod sysstacks;
 use crate::hcf::hcf;
-const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 8] = [
+const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 7] = [
     mapping::initialise,
     gdt::bootstrap_initialise,
     allocator::bootstrap_initialise,
     acpi::bootstrap_initialise,
     pfa::initialise,
-    page::initialise,
     sysstacks::initialise,
     gdt::initialise,
 ];
