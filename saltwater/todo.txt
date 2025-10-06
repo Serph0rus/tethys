@@ -15,13 +15,37 @@ system stacks
 // complete ^^
 // to do \/ \/
 global descriptor table
-per-process virtual memory manager
-tethys interface
-message management
-server management
-filesystem tree
-process tree
-priority calculation
-interrupts
+process control block
+track page mappings for each process
+solidify tethys filesystem interface
+track ownership of and page frame ownership for messages
+create filesystem servers
+track ownership of filesystem servers & messaga
+traversal of filesystems in a tree by string
+track ownership of processes by parent processes
+calculate priorities of processes based on heirarchy
+create system-owned filesystem interface
+create system-owned filesystem for qemu debugcon port
 context switching
-scheduling
+kickstart elf parsing
+embed elf into kernel
+userspace hello world program
+add process's scheduler state to pcb
+basic round-robin scheduler for all eligible processes
+ap trampoline
+initialise all other processors
+release control from boot process to scheduler
+system-owned process server
+tethys crate
+kickstart process
+userspace elf loader
+system-owned x86_64 port i/o filesystem
+system-owned irq filesystem
+atapio driver
+fat32 driver
+ps2 keyboard server
+ps2 mouse server
+framebuffer server
+console server
+shell
+framebuffer + mouse + keyboard multiplexer
