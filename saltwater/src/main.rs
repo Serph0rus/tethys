@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 pub extern crate alloc;
+mod page;
 mod config;
 mod qemu;
 mod acpi;
@@ -13,14 +14,15 @@ mod panic;
 mod pfa;
 mod sysstacks;
 use crate::hcf::hcf;
-const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 7] = [
+const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 8] = [
     mapping::initialise,
     gdt::bootstrap_initialise,
     allocator::bootstrap_initialise,
     acpi::bootstrap_initialise,
     pfa::initialise,
-    gdt::initialise,
+    page::initialise,
     sysstacks::initialise,
+    gdt::initialise,
 ];
 bootloader_api::entry_point!(main, config = &config::BOOTLOADER_CONFIG);
 pub fn main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {

@@ -14,8 +14,7 @@ impl acpi::Handler for SystemAcpiHandler {
             physical_start: physical_address,
             virtual_start: unsafe {
                 NonNull::<T>::new_unchecked(
-                    physical_to_virtual_address(x86_64::PhysAddr::new(physical_address as u64))
-                        .as_u64() as *mut T,
+                    physical_to_virtual_address(physical_address as u64) as *mut T,
                 )
             },
             region_length: size,
