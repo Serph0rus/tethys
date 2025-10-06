@@ -36,7 +36,8 @@ pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
                         .allocate_frame()
                         .expect("exhausted page frames while allocating system stacks!"),
                     x86_64::structures::paging::PageTableFlags::PRESENT
-                        | x86_64::structures::paging::PageTableFlags::WRITABLE,
+                        | x86_64::structures::paging::PageTableFlags::WRITABLE
+                        | x86_64::structures::paging::PageTableFlags::GLOBAL,
                     page_frame_allocator,
                 );
             }
