@@ -10,11 +10,11 @@ parse memory map
 mark bitmap as allocated
 page frame allocator
 qemu exit codes
+fix pfa bitmap
+system stacks
 // complete ^^
 // to do \/ \/
-system stacks
 global descriptor table
-fix pfa bitmap
 per-process virtual memory manager
 tethys interface
 message management
