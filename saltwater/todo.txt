@@ -3,17 +3,18 @@ bootstrap gdt
 bootstrap system allocator
 acpi parsing
 lapic counting
-// complete ^^
-// to do \/ \/
 find highest memory address
 find first satisfactory region
 free page bitmap
 parse memory map
 mark bitmap as allocated
 page frame allocator
+qemu exit codes
+// complete ^^
+// to do \/ \/
 system stacks
 global descriptor table
-qemu exit codes
+fix pfa bitmap
 per-process virtual memory manager
 tethys interface
 message management
