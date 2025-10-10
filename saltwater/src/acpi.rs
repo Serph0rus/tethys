@@ -1,5 +1,4 @@
-use crate::{mapping::physical_to_virtual_address, println};
-use acpi::platform::AcpiPlatform;
+use crate::{mapping::physical_to_virtual_address, port, println};
 use core::ptr::NonNull;
 use spinning_top::Spinlock;
 #[derive(Clone)]
@@ -60,27 +59,27 @@ impl acpi::Handler for SystemAcpiHandler {
     }
 
     fn read_io_u8(&self, port: u16) -> u8 {
-        unsafe { x86_64::structures::port::PortRead::read_from_port(port) }
+        unsafe { port::read_u8(port) }
     }
 
     fn read_io_u16(&self, port: u16) -> u16 {
-        unsafe { x86_64::structures::port::PortRead::read_from_port(port) }
+        unsafe { port::read_u16(port) }
     }
 
     fn read_io_u32(&self, port: u16) -> u32 {
-        unsafe { x86_64::structures::port::PortRead::read_from_port(port) }
+        unsafe { port::read_u32(port) }
     }
 
     fn write_io_u8(&self, port: u16, value: u8) {
-        unsafe { x86_64::structures::port::PortWrite::write_to_port(port, value) }
+        unsafe { port::write_u8(port, value) }
     }
 
     fn write_io_u16(&self, port: u16, value: u16) {
-        unsafe { x86_64::structures::port::PortWrite::write_to_port(port, value) }
+        unsafe { port::write_u16(port, value) }
     }
 
     fn write_io_u32(&self, port: u16, value: u32) {
-        unsafe { x86_64::structures::port::PortWrite::write_to_port(port, value) }
+        unsafe { port::write_u32(port, value) }
     }
 
     fn read_pci_u8(&self, address: acpi::PciAddress, offset: u16) -> u8 {
