@@ -1,6 +1,15 @@
 # tethys
 a somewhat unixy operating system.
 
+## building
+the following are required:
+- rustup
+- cargo
+- a nightly x86_64-unknown-none cargo toolchain
+- qemu-system-x86_64 (could also be listed in some package managers as part of qemu-full)
+- llvm-tools-preview ($ rustup component add llvm-tools-preview)
+otherwise, the project has been configured to run with simply $ cargo build or $ cargo run
+
 ## License
 
 Licensed under either of
