@@ -1,5 +1,4 @@
-use crate::println;
-
+use crate::{port, println};
 const EXIT_CODE_PORT: u16 = 0xf4;
 #[derive(Clone)]
 pub enum ExitCode {
@@ -11,5 +10,5 @@ pub fn exit(exit_code: ExitCode) {
         ExitCode::Success => "success",
         ExitCode::Failure => "failure",
     });
-    unsafe {x86_64::instructions::port::PortWrite::write_to_port(EXIT_CODE_PORT, exit_code as u32)};
+    unsafe {port::write_u32(EXIT_CODE_PORT, exit_code as u32)};
 }
