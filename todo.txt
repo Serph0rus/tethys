@@ -1,0 +1,57 @@
+mapping scheme
+bootstrap gdt
+bootstrap system allocator
+acpi parsing
+lapic counting
+find highest memory address
+find first satisfactory region
+free page bitmap
+parse memory map
+mark bitmap as allocated
+page frame allocator
+qemu exit codes
+fix pfa bitmap
+system stacks
+split system stacks into interrupt stacks, per-process system stacks, and a bootstrap stack
+gdt structures for dynamic allocation
+custom bootstrap gdt
+// complete ^^
+// to do \/ \/
+paging structures & functions
+real gdt
+solidify tethys filesystem interface
+process control block
+track page mappings for each process
+track ownership of and page frame ownership for messages
+create filesystem servers
+track ownership of filesystem servers & messaga
+traversal of filesystems in a tree by string
+track ownership of processes by parent processes
+calculate priorities of processes based on heirarchy
+create system-owned filesystem interface
+create system-owned filesystem for qemu debugcon port
+split kernel allocator into multicore-safe allocators
+context switching
+kickstart elf parsing
+embed elf into kernel
+userspace hello world program
+add process's scheduler state to pcb
+basic round-robin scheduler for all eligible processes
+ap trampoline
+initialise all other processors
+release control from boot process to scheduler
+system-owned process server
+tethys crate
+kickstart process
+userspace elf loader
+system-owned x86_64 port i/o filesystem
+system-owned irq filesystem
+atapio driver
+fat32 driver
+ps2 keyboard server
+ps2 mouse server
+framebuffer server
+console server
+shell
+framebuffer + mouse + keyboard multiplexer
+move away from x86_64 crate
