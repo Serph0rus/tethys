@@ -1,14 +1,14 @@
 use core::fmt::Write;
 use alloc::fmt;
 use spinning_top::Spinlock;
+use crate::port;
 struct DebugconWriter;
 static DEBUGCON_PORT: u16 = 0xe9;
 static DEBUGCON_WRITER: Spinlock<DebugconWriter> = Spinlock::new(DebugconWriter);
 impl fmt::Write for DebugconWriter {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        for byte in s.as_bytes()
-        {
-            unsafe { x86_64::instructions::port::PortWrite::write_to_port(DEBUGCON_PORT, *byte) };
+        for byte in s.as_bytes() {
+            unsafe {port::write_u8(DEBUGCON_PORT, *byte) };
         };
         Ok(())
     }
