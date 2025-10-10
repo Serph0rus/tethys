@@ -1,6 +1,9 @@
 # tethys
 a somewhat unixy operating system.
 
+## documentation
+- [filesystem](FILESYSTEM.md)
+
 ## building
 the following are required:
 - rustup
