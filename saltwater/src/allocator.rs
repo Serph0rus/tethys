@@ -1,6 +1,5 @@
 use core::{alloc::GlobalAlloc, mem::MaybeUninit};
 use spinning_top::Spinlock;
-
 use crate::println;
 const BOOTSTRAP_HEAP_SIZE: usize = 0x1_000_000;
 static mut BOOTSTRAP_HEAP: [MaybeUninit<u8>; BOOTSTRAP_HEAP_SIZE] =
@@ -41,5 +40,5 @@ pub fn bootstrap_initialise(_boot_info: &mut bootloader_api::BootInfo) {
             .lock()
             .init(&raw mut BOOTSTRAP_HEAP as *mut u8, BOOTSTRAP_HEAP_SIZE)
     };
-    println!("initialised bootstrap system global allocator...");
+    println!("initialised bootstrap kernel global allocator...");
 }
