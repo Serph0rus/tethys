@@ -7,10 +7,8 @@ pub enum Selector {
     Length,
     Send,
     Query,
-    Block,
-    Respond,
-    Check,
     Receive,
+    Respond,
 }
 pub unsafe fn syscall(selector: Selector, arguments: &[u64]) -> Result<u64, ()> {
     let mut length_args: [u64; 5] = [0; 5];
@@ -51,8 +49,8 @@ pub unsafe fn syscall_send(page_index: u64, page_count: u64) -> Result<u64, ()> 
 pub unsafe fn syscall_query(message_tag: u64) -> Result<bool, ()> {
     unsafe { syscall(Selector::Query, &[message_tag]) }.map(|x| x != 0)
 }
-pub unsafe fn syscall_block(message_tag: u64, page_index: u64) -> Result<(), ()> {
-    unsafe { syscall(Selector::Block, &[message_tag, page_index]) }.map(|_| ())
+pub unsafe fn syscall_receive(message_tag: u64, page_index: u64) -> Result<(), ()> {
+    unsafe { syscall(Selector::Receive, &[message_tag, page_index]) }.map(|_| ())
 }
 pub unsafe fn syscall_respond(
     server_tag: u64,
