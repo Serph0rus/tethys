@@ -7,7 +7,6 @@ mod debugcon;
 mod port;
 mod mapping;
 mod config;
-mod page;
 mod panic;
 mod qemu;
 mod allocator;
