@@ -38,70 +38,68 @@ applies to **seek_relative** and **seek_absolute**.
 applies to **tell**.
 ### lock
 exclusive access to a file. will not return a response until exclusive access is acquired.
-### bind
-local-exclusive. applies to **bind**.
 
 ## messages
-### read_state(descriptor) -> State
+### (rs) read_state(descriptor) -> State
 get **descriptor**'s state.
-### write_state(descriptor, state) -> ()
+### (ws) write_state(descriptor, state) -> ()
 set **descriptor**'s state to **state**
-### drop(descriptor) -> ()
+### (dp) drop(descriptor) -> ()
 drop a **descriptor**. **descriptor** is no longer valid following this call, and the specific value may refer to a different descriptor later.
-### walk(old_descriptor, path) -> new_descriptor
+### (wk) walk(old_descriptor, path) -> new_descriptor
 get a new descriptor pointing to one of a descriptor's children. walking with no path ("zero-walk") conventionally clones the descriptor.
-### list(descriptor, count) -> [\&str]
+### (ls) list(descriptor, count) -> [\&str]
 get the names of the next **count** children of **descriptor**.
-### list_peek(descriptor, count) -> [\&str]
+### (lp) list_peek(descriptor, count) -> [\&str]
 get the next **count** children of **descriptor** without advancing the list head forward.
-### list_seek_relative(descriptor, offset) -> ()
+### (lr) list_seek_relative(descriptor, offset) -> ()
 move **descriptor**'s list head forward or backward by **offset** (signed).
-### list_seek_absolute(descriptor, offset) -> ()
+### (la) list_seek_absolute(descriptor, offset) -> ()
 move **descriptor**'s list head to the **offset**'th entry
-### list_tell(descriptor) -> u64
+### (lt) list_tell(descriptor) -> u64
 get the index of **descriptor**'s next child to be listed (e.g. 0 means that the first entry will be read next).
-### make(descriptor, state, child_name) -> new_descriptor
+### (mk) make(descriptor, state, child_name) -> new_descriptor
 create a new file under **descriptor** with state **state**, which will now be accessible under **new_descriptor**.
-### remove(parent_descriptor, child_name) -> ()
+### (rm) remove(parent_descriptor, child_name) -> ()
 remove a child of **parent_descriptor** with name **child_name**. 
-### read(descriptor, length) -> (data)
+### (rd) read(descriptor, length) -> (data)
 get **length** bytes of data from **descriptor**. advances the read/head forward by **length** bytes. may return less than **length** bytes.
-### peek(descriptor, length) -> (data)
+### (pk) peek(descriptor, length) -> (data)
 get **length** bytes of data from **descriptor** without advancing the read/write head. may return less than **length** bytes.
-### insert(descriptor, data) -> length
+### (in) insert(descriptor, data) -> length
 insert **data** into **descriptor**, advancing the read/write head to the end of the inserted region. **length** represents the number of bytes actually written.
-### overwrite(descriptor, data) -> length
+### (ov) overwrite(descriptor, data) -> length
 insert **data** into **descriptor** over the top of any data that may already have been there, advancing the read/write head to the end of the overwritten region. **length** represents the number of bytes actually written.
-### truncate(descriptor, length) -> length
+### (tc) truncate(descriptor, length) -> length
 remove **length** bytes from **descriptor** starting after the read/write head. this will effectively advance the read/write head to the end of the truncated region. may write less than **length** bytes.
-### seek_relative(descriptor, offset) -> ()
+### (sr) seek_relative(descriptor, offset) -> ()
 move the read/write head of **descriptor** forward or backward by **offset** (signed).
-### seek_absolute(descriptor, offset) -> ()
+### (sa) seek_absolute(descriptor, offset) -> ()
 move the read/write head of **descriptor** to byte index **offset** (signed). a negative offset will refer to an index starting at the end of the file and growing backwards.
-### bind(from_descriptor, to_descriptor, state, child_name) -> ()
+### (bd) bind(from_descriptor, to_descriptor, state, child_name) -> ()
 local-exclusive. make **from_descriptor** available as /**to_descriptor**/**child_name**, with permissions no greater than **state**. internally clones the descriptor via zero-walk and stores the new descriptor in the kernel, to be cloned again for any new walks to the directory.
 
 ## universal syscalls
 these are messages to the kernel, which multiplexes tethys filesystems. the tethys operating system's system calls are as follows:
-### exit
+### (ex) exit
 exit the current thread.
-### map(index, count) -> ()
+### (mp) map(index, count) -> ()
 map **count** new blank pages to this process's address space starting at **index**, failing if the region overlaps with any other invalid or already-mapped regions.
-### length(tag) -> u64
+### (ln) length(tag) -> u64
 return the length of a message from **tag**, in pages, blocking until it is ready.
 ## client syscalls
-### send(index, count) -> tag
+### (sd) send(index, count) -> tag
 send **count** pages to the kernel starting from **index**.
-### query(tag) -> bool
+### (qy) query(tag) -> bool
 queries whether the response to tag is available.
-### block(tag, page_index) -> ()
+### (bk) block(tag, page_index) -> ()
 maps the message **tag** into this process's address space starting at page **page_index**, blocking until it is ready. consumes the tag in the process.
 ## server syscalls
-### respond(message_tag, page_index, page_count)
+### (rs) respond(message_tag, page_index, page_count)
 sends a response message starting at **page_index** of length **page_count** to message **message_tag**.
-### check(server_tag) -> bool
+### (ck) check(server_tag) -> bool
 checks whether a message to the server **server_tag** is available.
-### receive(server_tag) -> tag
+### (rc) receive(server_tag) -> tag
 gets the tag of the next message sent to the server, consuming it from the queue and blocking until one is available.
 
 ## patterns
