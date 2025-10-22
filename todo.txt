@@ -15,36 +15,29 @@ system stacks
 split system stacks into interrupt stacks, per-process system stacks, and a bootstrap stack
 gdt structures for dynamic allocation
 custom bootstrap gdt
+solidify tethys filesystem interface
 // complete ^^
 // to do \/ \/
 paging structures & functions
-real gdt
-solidify tethys filesystem interface
+boilerplate kickstart process
+kickstart process elf loader
+context switching
+syscall testing
 process control block
 track page mappings for each process
 track ownership of and page frame ownership for messages
 create filesystem servers
-track ownership of filesystem servers & messaga
+track ownership of filesystem servers & messages
 traversal of filesystems in a tree by string
+basic round-robin scheduler
 track ownership of processes by parent processes
-calculate priorities of processes based on heirarchy
 create system-owned filesystem interface
-create system-owned filesystem for qemu debugcon port
-split kernel allocator into multicore-safe allocators
-context switching
-kickstart elf parsing
-embed elf into kernel
-userspace hello world program
-add process's scheduler state to pcb
-basic round-robin scheduler for all eligible processes
-ap trampoline
-initialise all other processors
-release control from boot process to scheduler
-system-owned process server
-tethys crate
-kickstart process
-userspace elf loader
 system-owned x86_64 port i/o filesystem
+ring 0 userspace hello world program
+system-owned process server
+single core round-robin scheduler
+release control from boot process to scheduler
+userspace elf loader
 system-owned irq filesystem
 atapio driver
 fat32 driver
@@ -54,4 +47,11 @@ framebuffer server
 console server
 shell
 framebuffer + mouse + keyboard multiplexer
+split kernel allocator into multicore-safe allocators
+move to fixed-priority multicore-safe scheduler
+real gdt
+ap trampoline
+initialise all other processors to scheduler
+switch to ring-3 unprivileged user processes
+calculate priorities of processes based on heirarchy
 move away from x86_64 crate
