@@ -1,7 +1,6 @@
+use crate::{mapping, println};
 use core::{arch::asm, mem::MaybeUninit};
 use x86_64::registers::segmentation::Segment;
-
-use crate::{mapping, println};
 #[repr(C, packed)]
 struct TaskStateSegment {
     reserved_0: u32,
@@ -26,10 +25,7 @@ struct GdtDescriptor {
 #[repr(C, packed)]
 struct SegmentSelector(u16);
 impl TaskStateSegment {
-    const fn new(
-        privilege_stacks: [u64; 3],
-        interrupt_stacks: [u64; 7],
-    ) -> TaskStateSegment {
+    const fn new(privilege_stacks: [u64; 3], interrupt_stacks: [u64; 7]) -> TaskStateSegment {
         TaskStateSegment {
             reserved_0: 0,
             privilege_stacks: privilege_stacks,
@@ -52,28 +48,23 @@ impl DescriptorAccess {
         present: bool,
     ) -> DescriptorAccess {
         DescriptorAccess(
-              ((accessed as u8) << 0)
-            | ((read_write as u8) << 1)
-            | ((direction_conforming as u8) << 2)
-            | ((executable as u8) << 3)
-            | ((non_system as u8) << 4)
-            | (if user_mode {0b11} else {0} << 5)
-            | ((present as u8) << 7)
+            ((accessed as u8) << 0)
+                | ((read_write as u8) << 1)
+                | ((direction_conforming as u8) << 2)
+                | ((executable as u8) << 3)
+                | ((non_system as u8) << 4)
+                | (if user_mode { 0b11 } else { 0 } << 5)
+                | ((present as u8) << 7),
         )
     }
 }
 impl DescriptorFlags {
-    const fn new(
-        available: bool,
-        long: bool,
-        size: bool,
-        granularity: bool,
-    ) -> DescriptorFlags {
+    const fn new(available: bool, long: bool, size: bool, granularity: bool) -> DescriptorFlags {
         DescriptorFlags(
-              ((available as u8) << 0)
-            | ((long as u8) << 1)
-            | ((size as u8) << 2)
-            | ((granularity as u8) << 3)
+            ((available as u8) << 0)
+                | ((long as u8) << 1)
+                | ((size as u8) << 2)
+                | ((granularity as u8) << 3),
         )
     }
 }
@@ -85,13 +76,13 @@ impl Descriptor {
         flags: DescriptorFlags,
     ) -> Descriptor {
         Descriptor(
-              (limit as u64 & 0xffff << 0) << 0
-            | (base as u64 & 0xffff << 0) << 16
-            | (base as u64 & 0xf << 16) << 16
-            | (access.0 as u64 & 0xff << 0) << 40
-            | (limit as u64 & 0xf << 16) << 32
-            | (flags.0 as u64 & 0xf << 0) << 52
-            | (base as u64 & 0xff << 24) << 32
+            (limit as u64 & 0xffff << 0) << 0
+                | (base as u64 & 0xffff << 0) << 16
+                | (base as u64 & 0xf << 16) << 16
+                | (access.0 as u64 & 0xff << 0) << 40
+                | (limit as u64 & 0xf << 16) << 32
+                | (flags.0 as u64 & 0xf << 0) << 52
+                | (base as u64 & 0xff << 24) << 32,
         )
     }
     const fn null() -> Descriptor {
@@ -104,23 +95,10 @@ impl Descriptor {
                 (ptr & u32::MAX as u64) as u32,
                 (size_of::<TaskStateSegment>() - 1) as u32,
                 DescriptorAccess(
-                    0x9
-                    | DescriptorAccess::new(
-                          false,
-                          false,
-                          false,
-                          false,
-                          false,
-                          false,
-                          true,
-                      ).0 & (0xf << 4)
+                    0x9 | DescriptorAccess::new(false, false, false, false, false, false, true).0
+                        & (0xf << 4),
                 ),
-                DescriptorFlags::new(
-                    false,
-                    false,
-                    false,
-                    false,
-                )
+                DescriptorFlags::new(false, false, false, false),
             ),
             Descriptor((ptr & (u32::MAX as u64) << 32) >> 32),
         )
@@ -136,51 +114,23 @@ impl GdtDescriptor {
 }
 impl SegmentSelector {
     const fn new(index: u16, is_user: bool) -> SegmentSelector {
-        SegmentSelector(index << 3 | if is_user {3} else {0})
+        SegmentSelector(index << 3 | if is_user { 3 } else { 0 })
     }
 }
 const KERNEL_CODE_DESCRIPTOR: Descriptor = Descriptor::new(
     u32::MIN,
     u32::MAX,
-    DescriptorAccess::new(
-        true,
-        true,
-        false,
-        true,
-        true,
-        false,
-        true,
-    ),
-    DescriptorFlags::new(
-        false,
-        true,
-        false,
-        true,
-    )
+    DescriptorAccess::new(true, true, false, true, true, false, true),
+    DescriptorFlags::new(false, true, false, true),
 );
 const KERNEL_DATA_DESCRIPTOR: Descriptor = Descriptor::new(
     u32::MIN,
     u32::MAX,
-    DescriptorAccess::new(
-        true,
-        true,
-        false,
-        false,
-        true,
-        false,
-        true,
-    ),
-    DescriptorFlags::new(
-        false,
-        false,
-        false,
-        true,
-    ),
+    DescriptorAccess::new(true, true, false, false, true, false, true),
+    DescriptorFlags::new(false, false, false, true),
 );
-static mut BOOTSTRAP_TSS: TaskStateSegment = TaskStateSegment::new(
-    [mapping::BOOTSTRAP_STACK; 3],
-    [mapping::BOOTSTRAP_STACK; 7],
-);
+static mut BOOTSTRAP_TSS: TaskStateSegment =
+    TaskStateSegment::new([mapping::BOOTSTRAP_STACK; 3], [mapping::BOOTSTRAP_STACK; 7]);
 const BOOTSTRAP_GDT_COUNT: usize = 5;
 static mut BOOTSTRAP_GDT: [MaybeUninit<Descriptor>; BOOTSTRAP_GDT_COUNT] = [
     MaybeUninit::new(Descriptor::null()),
@@ -198,13 +148,25 @@ pub fn bootstrap_initialise(_boot_info: &mut bootloader_api::BootInfo) {
         println!("constructed bootstrap global descriptor table...");
         asm!("lgdt [{}]", in(reg) &GdtDescriptor::new(&raw mut BOOTSTRAP_GDT as u64, BOOTSTRAP_GDT_COUNT), options(readonly, nostack, preserves_flags));
         println!("loaded bootstrap global descriptor table...");
-        x86_64::registers::segmentation::CS::set_reg(x86_64::registers::segmentation::SegmentSelector(KERNEL_CODE_SELECTOR.0));
+        x86_64::registers::segmentation::CS::set_reg(
+            x86_64::registers::segmentation::SegmentSelector(KERNEL_CODE_SELECTOR.0),
+        );
         println!("far-returned into new code segment...");
-        x86_64::registers::segmentation::DS::set_reg(x86_64::registers::segmentation::SegmentSelector(KERNEL_DATA_SELECTOR.0));
-        x86_64::registers::segmentation::ES::set_reg(x86_64::registers::segmentation::SegmentSelector(KERNEL_DATA_SELECTOR.0));
-        x86_64::registers::segmentation::FS::set_reg(x86_64::registers::segmentation::SegmentSelector(KERNEL_DATA_SELECTOR.0));
-        x86_64::registers::segmentation::GS::set_reg(x86_64::registers::segmentation::SegmentSelector(KERNEL_DATA_SELECTOR.0));
-        x86_64::registers::segmentation::SS::set_reg(x86_64::registers::segmentation::SegmentSelector(KERNEL_DATA_SELECTOR.0));
+        x86_64::registers::segmentation::DS::set_reg(
+            x86_64::registers::segmentation::SegmentSelector(KERNEL_DATA_SELECTOR.0),
+        );
+        x86_64::registers::segmentation::ES::set_reg(
+            x86_64::registers::segmentation::SegmentSelector(KERNEL_DATA_SELECTOR.0),
+        );
+        x86_64::registers::segmentation::FS::set_reg(
+            x86_64::registers::segmentation::SegmentSelector(KERNEL_DATA_SELECTOR.0),
+        );
+        x86_64::registers::segmentation::GS::set_reg(
+            x86_64::registers::segmentation::SegmentSelector(KERNEL_DATA_SELECTOR.0),
+        );
+        x86_64::registers::segmentation::SS::set_reg(
+            x86_64::registers::segmentation::SegmentSelector(KERNEL_DATA_SELECTOR.0),
+        );
         println!("reloaded data segment registers...");
     }
 }
