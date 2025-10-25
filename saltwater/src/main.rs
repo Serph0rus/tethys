@@ -1,17 +1,18 @@
 #![no_std]
 #![no_main]
 pub extern crate alloc;
+mod acpi;
+mod allocator;
+mod config;
+mod debugcon;
+mod frame;
 mod gdt;
 mod hcf;
-mod debugcon;
-mod port;
 mod mapping;
-mod config;
+mod page;
 mod panic;
+mod port;
 mod qemu;
-mod allocator;
-mod acpi;
-mod frame;
 use crate::hcf::hcf;
 const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 5] = [
     mapping::initialise,
