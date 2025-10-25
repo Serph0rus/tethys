@@ -62,14 +62,14 @@ get the index of **descriptor**'s next child to be listed (e.g. 0 means that the
 create a new file under **descriptor** with state **state**, which will now be accessible under **new_descriptor**.
 ### (rm) remove(parent_descriptor, child_name) -> ()
 remove a child of **parent_descriptor** with name **child_name**. 
-### (rd) read(descriptor, length) -> (data)
+### (rd) read(descriptor, length) -> (content)
 get **length** bytes of data from **descriptor**. advances the read/head forward by **length** bytes. may return less than **length** bytes.
-### (pk) peek(descriptor, length) -> (data)
+### (pk) peek(descriptor, length) -> (content)
 get **length** bytes of data from **descriptor** without advancing the read/write head. may return less than **length** bytes.
-### (in) insert(descriptor, data) -> length
-insert **data** into **descriptor**, advancing the read/write head to the end of the inserted region. **length** represents the number of bytes actually written.
-### (ov) overwrite(descriptor, data) -> length
-insert **data** into **descriptor** over the top of any data that may already have been there, advancing the read/write head to the end of the overwritten region. **length** represents the number of bytes actually written.
+### (in) insert(descriptor, content) -> length
+insert **content** into **descriptor**, advancing the read/write head to the end of the inserted region. **length** represents the number of bytes actually written.
+### (ov) overwrite(descriptor, content) -> length
+insert **content** into **descriptor** over the top of any data that may already have been there, advancing the read/write head to the end of the overwritten region. **length** represents the number of bytes actually written.
 ### (tc) truncate(descriptor, length) -> length
 remove **length** bytes from **descriptor** starting after the read/write head. this will effectively advance the read/write head to the end of the truncated region. may write less than **length** bytes.
 ### (sr) seek_relative(descriptor, offset) -> ()
