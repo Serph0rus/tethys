@@ -8,7 +8,6 @@ pub struct BitmapPageFrameAllocator {
     bitmap: &'static mut [u8],
     last_allocated_frame_index: usize,
 }
-pub struct Frame(u64);
 pub static PAGE_FRAME_ALLOCATOR: Spinlock<Option<BitmapPageFrameAllocator>> = Spinlock::new(None);
 pub fn initialise(boot_info: &mut bootloader_api::BootInfo) {
     println!("bootloader describes memory regions:");
@@ -93,31 +92,27 @@ pub fn initialise(boot_info: &mut bootloader_api::BootInfo) {
         free_page_count * PAGE_SIZE
     );
 }
-impl Frame {
-    pub fn new() -> Option<Frame> {
-        let mut page_frame_allocator_guard = PAGE_FRAME_ALLOCATOR.lock();
-        let page_frame_allocator = page_frame_allocator_guard.as_mut().expect("page frame allocator not initialised before page frame allocation attempted!");
-        for frame in page_frame_allocator.last_allocated_frame_index..page_frame_allocator.bitmap.len() * 8 {
-            if page_frame_allocator.bitmap[frame / 8] & (1 << (frame % 8)) == 0 {
-                page_frame_allocator.bitmap[frame / 8] |= 1 << (frame % 8);
-                page_frame_allocator.last_allocated_frame_index = frame;
-                return Some(Frame(frame as u64));
-            }
+pub fn new_frame() -> Option<usize> {
+    let mut page_frame_allocator_guard = PAGE_FRAME_ALLOCATOR.lock();
+    let page_frame_allocator = page_frame_allocator_guard.as_mut().expect("page frame allocator not initialised before page frame allocation attempted!");
+    for frame_index in page_frame_allocator.last_allocated_frame_index..page_frame_allocator.bitmap.len() * 8 {
+        if page_frame_allocator.bitmap[frame_index / 8] & (1 << (frame_index % 8)) == 0 {
+            page_frame_allocator.bitmap[frame_index / 8] |= 1 << (frame_index % 8);
+            page_frame_allocator.last_allocated_frame_index = frame_index;
+            return Some(frame_index);
         }
-        for frame in 0..page_frame_allocator.last_allocated_frame_index {
-            if page_frame_allocator.bitmap[frame / 8] & (1 << (frame % 8)) == 0 {
-                page_frame_allocator.bitmap[frame / 8] |= 1 << (frame % 8);
-                page_frame_allocator.last_allocated_frame_index = frame;
-                return Some(Frame(frame as u64));
-            }
-        }
-        None
     }
+    for frame_index in 0..page_frame_allocator.last_allocated_frame_index {
+        if page_frame_allocator.bitmap[frame_index / 8] & (1 << (frame_index % 8)) == 0 {
+            page_frame_allocator.bitmap[frame_index / 8] |= 1 << (frame_index % 8);
+            page_frame_allocator.last_allocated_frame_index = frame_index;
+            return Some(frame_index);
+        }
+    }
+    None
 }
-impl Drop for Frame {
-    fn drop(&mut self) {
-        let mut page_frame_allocator_guard = PAGE_FRAME_ALLOCATOR.lock();
-        let page_frame_allocator = page_frame_allocator_guard.as_mut().expect("page frame allocator not initialised before page frame deallocation attempted!");
-        page_frame_allocator.bitmap[self.0 as usize / 8] &= !(1 << (self.0 % 8))
-    }
+pub fn drop_frame(frame_index: usize) {
+    let mut page_frame_allocator_guard = PAGE_FRAME_ALLOCATOR.lock();
+    let page_frame_allocator = page_frame_allocator_guard.as_mut().expect("page frame allocator not initialised before page frame deallocation attempted!");
+    page_frame_allocator.bitmap[frame_index / 8] &= !(1 << (frame_index % 8))
 }
