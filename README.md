@@ -2,7 +2,7 @@
 a somewhat unixy operating system.
 
 ## documentation
-- [filesystem](FILESYSTEM.md)
+- [abi](ABI.md)
 
 ## building
 the following are required:
