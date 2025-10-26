@@ -21,9 +21,9 @@ a file descriptor state contains the following boolean fields, applying to the f
 ### walk
 applies to **walk**, **list**, **list_peek**, **list_seek_relative**, **list_seek_absolute**, and **list_tell**.
 ### make
-applies to **make** and **bind**.
+applies to **make** and **bind**. partially applies to **list_write** which requires both **make** and **remove** permissions.
 ### remove
-applies to **remove**.
+applies to **remove**. partially applies to **list_write** which requires both **make** and **remove** permissions.
 ### read
 applies to **read** and **peek**.
 ### insert
@@ -52,10 +52,12 @@ get a new descriptor pointing to one of a descriptor's children. walking with no
 get the names of the next **count** children of **descriptor**.
 ### (lp) list_peek(descriptor, count) -> [\&str]
 get the next **count** children of **descriptor** without advancing the list head forward.
+### (lw) list_write(descriptor, old_name, new_name) -> ()
+move **descriptor**'s child, named **old_name**, to be referred to as **new_name**.
 ### (lr) list_seek_relative(descriptor, offset) -> ()
 move **descriptor**'s list head forward or backward by **offset** (signed).
 ### (la) list_seek_absolute(descriptor, offset) -> ()
-move **descriptor**'s list head to the **offset**'th entry
+move **descriptor**'s list head to the **offset**'th (signed) entry. negative values refer to indices starting from the opposite end of the list.
 ### (lt) list_tell(descriptor) -> u64
 get the index of **descriptor**'s next child to be listed (e.g. 0 means that the first entry will be read next).
 ### (mk) make(descriptor, state, child_name) -> new_descriptor
@@ -81,15 +83,17 @@ local-exclusive. make **from_descriptor** available as /**to_descriptor**/**chil
 
 ## universal syscalls
 these are messages to the kernel, which multiplexes tethys filesystems. the tethys operating system's system calls are as follows:
-### (ex) exit
+### (ex) exit -> !
 exit the current thread.
 ### (mp) map(index, count) -> ()
 map **count** new blank pages to this process's address space starting at **index**, failing if the region overlaps with any other invalid or already-mapped regions.
+### (sp) switch(from_index, count, to_index) -> ()
+switch **count** pages starting at **from_index** to be mapped starting at **to_index**, and **count** pages starting at **to_index** to be mapped at **from_index**, preserving their content (but not modifying flags, e.g. the same content will now have swapped flags).
 ### (ln) length(tag) -> u64
 return the length of a message from **tag**, in pages, blocking until it is ready.
 ## client syscalls
 ### (sd) send(index, count) -> tag
-send **count** pages to the kernel starting from **index**.
+send **count** pages to the kernel starting from **index**. pages remain in the address space under a copy-on-write policy.
 ### (qy) query(tag) -> bool
 queries whether the response to tag is available.
 ### (bk) block(tag, page_index) -> ()
