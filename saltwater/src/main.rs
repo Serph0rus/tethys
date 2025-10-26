@@ -21,7 +21,7 @@ const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 5] = [
     acpi::bootstrap_initialise,
     frame::initialise,
     // stacks::initialise,
-    // gdt::initialise
+    // gdt::initialise,
 ];
 bootloader_api::entry_point!(main, config = &config::BOOTLOADER_CONFIG);
 pub fn main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
