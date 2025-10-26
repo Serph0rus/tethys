@@ -145,10 +145,12 @@ impl Buffer {
                 page_length: self.page_length - first_page_length - second_page_length,
             };
             unsafe { mapping_buffer.syscall_map() }.unwrap_or_else(|_| {
-                unsafe {self.syscall_map()}.unwrap_or_else(|_| panic!(
-                    "failed to unmap 0x{:x} pages at index 0x{:x} during buffer growing!",
-                    self.page_index, self.page_length
-                ));
+                unsafe { self.syscall_map() }.unwrap_or_else(|_| {
+                    panic!(
+                        "failed to unmap 0x{:x} pages at index 0x{:x} during buffer growing!",
+                        self.page_index, self.page_length
+                    )
+                });
                 self = Buffer::new(first_page_length + second_page_length);
             })
         } else {
@@ -194,49 +196,20 @@ pub struct Descriptor {
     index: u64,
 }
 impl Descriptor {
-    pub fn read_state(self: &mut Self) -> Result<State, ()> {
-
-    }
-    pub fn write_state(self: &mut Self, state: &State) -> Result<(), ()> {
-
-    }
-    pub fn walk(self: &mut Self, path: &str) -> Result<Descriptor, ()> {
-
-    }
-    pub fn list(self: &mut Self, count: usize) -> Result<&mut [&mut str], ()> {
-
-    }
-    pub fn list_peek(self: &mut Self, count: usize) -> Result<&mut [&mut str], ()> {
-
-    }
-    pub fn list_seek_relative(self: &mut Self, offset: isize) -> Result<(), ()> {
-
-    }
-    pub fn list_seek_absolute(self: &mut Self, offset: isize) -> Result<(), ()> {
-        
-    }
-    pub fn list_tell(self: &mut Self) -> usize {
-
-    }
-    pub fn make(self: &mut Self, child_state: &State, child_name: &str) -> Result<Descriptor, ()> {
-
-    }
-    pub fn remove(self: &mut Self, child_name: &str) -> Result<(), ()> {
-
-    }
-    pub fn read(self: &mut Self, length: usize) -> Result<&mut [u8], ()> {
-
-    }
-    pub fn peek(self: &mut Self, length: usize) -> Result<&mut [u8], ()> {
-
-    }
-    pub fn insert(self: &mut Self, content: Buffer, length: usize) -> Result<usize, ()> {
-
-    }
-    pub fn overwrite(self: &mut Self, content: Buffer, length: usize) -> Result<usize, ()> {
-
-    }
-    pub fn truncate
+    pub fn read_state(self: &mut Self) -> Result<State, ()> {}
+    pub fn write_state(self: &mut Self, state: &State) -> Result<(), ()> {}
+    pub fn walk(self: &mut Self, path: &str) -> Result<Descriptor, ()> {}
+    pub fn list(self: &mut Self, count: usize) -> Result<&mut [&mut str], ()> {}
+    pub fn list_peek(self: &mut Self, count: usize) -> Result<&mut [&mut str], ()> {}
+    pub fn list_seek_relative(self: &mut Self, offset: isize) -> Result<(), ()> {}
+    pub fn list_seek_absolute(self: &mut Self, offset: isize) -> Result<(), ()> {}
+    pub fn list_tell(self: &mut Self) -> usize {}
+    pub fn make(self: &mut Self, child_state: &State, child_name: &str) -> Result<Descriptor, ()> {}
+    pub fn remove(self: &mut Self, child_name: &str) -> Result<(), ()> {}
+    pub fn read(self: &mut Self, length: usize) -> Result<&mut [u8], ()> {}
+    pub fn peek(self: &mut Self, length: usize) -> Result<&mut [u8], ()> {}
+    pub fn insert(self: &mut Self, content: Buffer, length: usize) -> Result<usize, ()> {}
+    pub fn overwrite(self: &mut Self, content: Buffer, length: usize) -> Result<usize, ()> {}
 }
 impl Drop for Descriptor {
     fn drop(&mut self) {
@@ -245,7 +218,9 @@ impl Drop for Descriptor {
 }
 impl Clone for Descriptor {
     fn clone(&self) -> Self {
-        Self { index: self.index.clone() }
+        Self {
+            index: self.index.clone(),
+        }
     }
 }
 #[repr(C, packed)]
@@ -254,10 +229,16 @@ pub struct MessageHeader {
     pub tag: u64,
     pub offset: u64,
 }
-extern fn main();
-pub unsafe extern "C" fn _start(workspace_descriptor_index: u64) -> ! {
-    let mut workspace_descriptor = Descriptor {
-        index: workspace_descriptor_index,
+#[macro_export]
+macro_rules! entry {
+    ($main_function:expr) => {
+        unsafe extern "C" fn _start(workspace_descriptor_index: u64) -> ! {
+            let mut workspace_descriptor = Descriptor {
+                index: workspace_descriptor_index,
+            };
+            let main_function_checked: fn(Descriptor) = $main_function;
+            main_function_checked(workspace_descriptor);
+            panic!()
+        }
     };
-    panic!()
 }
