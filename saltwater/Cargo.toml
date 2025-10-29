@@ -16,6 +16,11 @@ x86_64 = "0.15.2"
 version = "1.5.0"
 features = ["spin_no_std"]
 
+[dependencies.elf]
+version = "0.8.0"
+default-features = false
+features = ["alloc", "to_str"]
+
 [profile.dev]
 panic = "abort"
 opt-level = 5

@@ -2,3 +2,7 @@
 /Cargo.lock
 /saltwater/target
 /saltwater/Cargo.lock
+/simple_tree_filesystem/target
+/simple_tree_filesystem/Cargo.lock
+/tethys_lib/target
+/tethys_lib/Cargo.lock

@@ -7,4 +7,4 @@ edition = "2024"
 hashbrown = "0.16.0"
 lazy_static = "1.5.0"
 spinning_top = "0.3.0"
-tethys_core = { path = "../tethys_core" }
+tethys_lib = { path = "../tethys_lib" }
