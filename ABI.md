@@ -52,8 +52,6 @@ get a new descriptor pointing to one of a descriptor's children. walking with no
 get the names of the next **count** children of **descriptor**.
 ### (lp) list_peek(descriptor, count) -> [\&str]
 get the next **count** children of **descriptor** without advancing the list head forward.
-### (lw) list_overwrite(descriptor, new_name) -> ()
-move **descriptor**'s child at the current list head to be referred to as **new_name**.
 ### (lr) list_seek_relative(descriptor, offset) -> ()
 move **descriptor**'s list head forward or backward by **offset** (signed).
 ### (la) list_seek_absolute(descriptor, offset) -> ()
@@ -64,6 +62,8 @@ get the index of **descriptor**'s next child to be listed (e.g. 0 means that the
 create a new file under **descriptor** with state **state**, which will now be accessible under **new_descriptor**.
 ### (rm) remove(parent_descriptor, child_name) -> ()
 remove a child of **parent_descriptor** with name **child_name**. 
+### (lw) rename(descriptor, new_name) -> ()
+move **descriptor**'s child at the current list head to be referred to as **new_name**.
 ### (rd) read(descriptor, length) -> (content)
 get **length** bytes of data from **descriptor**. advances the read/head forward by **length** bytes. may return less than **length** bytes.
 ### (pk) peek(descriptor, length) -> (content)
@@ -80,11 +80,12 @@ move the read/write head of **descriptor** forward or backward by **offset** (si
 move the read/write head of **descriptor** to byte index **offset** (signed). a negative offset will refer to an index starting at the end of the file and growing backwards.
 ### (bd) bind(from_descriptor, to_descriptor, state, child_name) -> ()
 local-exclusive. make **from_descriptor** available as /**to_descriptor**/**child_name**, with permissions no greater than **state**. internally clones the descriptor via zero-walk and stores the new descriptor in the kernel, to be cloned again for any new walks to the directory.
+### (um) unmap
 
 ## universal syscalls
 these are messages to the kernel, which multiplexes tethys filesystems. the tethys operating system's system calls are as follows:
-### (ex) exit -> !
-exit the current thread.
+### (ex) abort -> !
+abort the current thread.
 ### (mp) map(index, count) -> ()
 map **count** new blank pages to this process's address space starting at **index**, failing if the region overlaps with any other invalid or already-mapped regions.
 ### (sp) switch(from_index, count, to_index) -> ()
@@ -99,7 +100,7 @@ queries whether the response to tag is available.
 ### (bk) block(tag, page_index) -> ()
 maps the message **tag** into this process's address space starting at page **page_index**, blocking until it is ready. consumes the tag in the process.
 ## server syscalls
-### (rs) respond(message_tag, page_index, page_count)
+### (rs) respond(server_tag, message_tag, page_index, page_count)
 sends a response message starting at **page_index** of length **page_count** to message **message_tag**.
 ### (ck) check(server_tag) -> bool
 checks whether a message to the server **server_tag** is available.
