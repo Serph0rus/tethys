@@ -15,7 +15,6 @@ mod port;
 mod qemu;
 mod pcb;
 use crate::hcf::hcf;
-use elf::
 const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 5] = [
     mapping::initialise,
     gdt::bootstrap_initialise,
@@ -43,7 +42,9 @@ pub fn main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
         initialiser(boot_info);
     }
     qemu::exit(qemu::ExitCode::Success);
-    println!("successfully initialised saltwater tethys kernel!");
+    println!("successfully initialised saltwater tethys kernel! exiting initialisation procedure into kickstart process...");
+    elf::file::parse_ident(data)
+    println!("successfully executed kickstart process!");
     hcf();
     
 }
