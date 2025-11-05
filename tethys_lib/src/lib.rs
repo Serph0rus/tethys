@@ -1,7 +1,5 @@
 #![no_std]
 use core::arch::asm;
-use core::borrow::{Borrow, BorrowMut};
-use core::ops::{Deref, DerefMut};
 use core::slice;
 use core::sync::atomic::{AtomicUsize, Ordering};
 const PAGE_SIZE: usize = 4096;
@@ -9,18 +7,20 @@ const HEAP_PAGE_INDEX: usize = 0x0000_4000_0000;
 const BUFFER_PAGE_INDEX: usize = 0x0000_8000_0000;
 static NEXT_HEAP_PAGE: AtomicUsize = AtomicUsize::new(HEAP_PAGE_INDEX);
 static NEXT_BUFFER_PAGE: AtomicUsize = AtomicUsize::new(BUFFER_PAGE_INDEX);
-#[repr(C)]
-pub enum Selector {
+#[repr(usize)]
+pub enum Syscall {
     Abort,
     Map,
-    Move,
+    Switch,
     Length,
     Send,
     Query,
-    Receive,
+    Block,
     Respond,
+    Check,
+    Receive,
 }
-pub unsafe fn syscall(selector: Selector, arguments: &[usize]) -> Result<usize, ()> {
+pub unsafe fn syscall(Syscall: Syscall, arguments: &[usize]) -> Result<usize, ()> {
     let mut length_args: [usize; 5] = [0; 5];
     for i in 0..5 {
         length_args[i] = arguments.get(i).unwrap_or(&0).clone();
@@ -30,7 +30,7 @@ pub unsafe fn syscall(selector: Selector, arguments: &[usize]) -> Result<usize, 
     unsafe {
         asm!(
             "syscall",
-            inlateout("rax") selector as u64 => error,
+            inlateout("rax") Syscall as u64 => error,
             inlateout("rdi") length_args[0] => result,
             in("rsi") length_args[1],
             in("rdx") length_args[2],
@@ -45,24 +45,24 @@ pub unsafe fn syscall(selector: Selector, arguments: &[usize]) -> Result<usize, 
 }
 pub unsafe fn syscall_abort() -> ! {
     unsafe {
-        let _ = syscall(Selector::Abort, &[]);
+        let _ = syscall(Syscall::Abort, &[]);
     };
     panic!("thread did not abort!")
 }
 pub unsafe fn syscall_map(page_index: usize, page_count: usize) -> Result<(), ()> {
-    unsafe { syscall(Selector::Map, &[page_index, page_count]) }.map(|_| ())
+    unsafe { syscall(Syscall::Map, &[page_index, page_count]) }.map(|_| ())
 }
 pub unsafe fn syscall_length(message_tag: usize) -> Result<usize, ()> {
-    unsafe { syscall(Selector::Length, &[message_tag]) }
+    unsafe { syscall(Syscall::Length, &[message_tag]) }
 }
 pub unsafe fn syscall_send(page_index: usize, page_count: usize) -> Result<usize, ()> {
-    unsafe { syscall(Selector::Send, &[page_index, page_count]) }
+    unsafe { syscall(Syscall::Send, &[page_index, page_count]) }
 }
 pub unsafe fn syscall_query(message_tag: usize) -> Result<bool, ()> {
-    unsafe { syscall(Selector::Query, &[message_tag]) }.map(|x| x != 0)
+    unsafe { syscall(Syscall::Query, &[message_tag]) }.map(|x| x != 0)
 }
-pub unsafe fn syscall_receive(message_tag: usize, page_index: usize) -> Result<(), ()> {
-    unsafe { syscall(Selector::Receive, &[message_tag, page_index]) }.map(|_| ())
+pub unsafe fn syscall_block(message_tag: usize, page_index: usize) -> Result<bool, ()> {
+    unsafe { syscall(Syscall::Block, &[message_tag, page_index]) }.map(|x| x != 0)
 }
 pub unsafe fn syscall_respond(
     server_tag: u64,
@@ -72,7 +72,7 @@ pub unsafe fn syscall_respond(
 ) -> Result<(), ()> {
     unsafe {
         syscall(
-            Selector::Respond,
+            Syscall::Respond,
             &[
                 server_tag as usize,
                 message_tag as usize,
@@ -82,6 +82,12 @@ pub unsafe fn syscall_respond(
         )
         .map(|_| ())
     }
+}
+pub unsafe fn syscall_check(server_tag: usize) -> Result<bool, ()> {
+    unsafe { syscall(Syscall::Check, &[server_tag]) }.map(|x| x != 0)
+}
+pub unsafe fn syscall_receive(server_tag: usize) -> Result<usize, ()> {
+    unsafe { syscall(Syscall::Receive, &[server_tag]) }
 }
 pub struct Buffer {
     page_index: usize,
@@ -179,38 +185,120 @@ impl Drop for Buffer {
         }
     }
 }
-#[repr(C, packed)]
+#[repr(usize)]
+enum MsgSelector {
+    ReadState,
+    WriteState,
+    Drop,
+    Walk,
+    List,
+    ListPeek,
+    ListSeekForward,
+    ListSeekBackward,
+    ListSeekStart,
+    ListSeekEnd,
+    ListTell,
+    Make,
+    Remove,
+    Rename,
+    Read,
+    Peek,
+    Insert,
+    Overwrite,
+    Truncate,
+    SeekForward,
+    SeekBackward,
+    SeekStart,
+    SeekEnd,
+    Bind,
+    Unmap,
+}
 pub struct State {
-    walk: u8,
-    make: u8,
-    remove: u8,
-    read: u8,
-    insert: u8,
-    overwrite: u8,
-    truncate: u8,
-    seek: u8,
-    tell: u8,
-    lock: u8,
+    walk: bool,
+    rename: bool,
+    make: bool,
+    remove: bool,
+    read: bool,
+    insert: bool,
+    overwrite: bool,
+    truncate: bool,
+    seek_forward: bool,
+    seek_backward: bool,
+    seek_start: bool,
+    seek_end: bool,
+    tell: bool,
+    lock: bool,
+}
+macro_rules! state_chain {
+    ($field:ident) => {
+        const fn $field(mut self: Self, value: bool) -> State {
+            self.$field = value;
+            self
+        }
+    };
+}
+impl State {
+    const fn new() -> State {
+        State {
+            walk: false,
+            rename: false,
+            make: false,
+            remove: false,
+            read: false,
+            insert: false,
+            overwrite: false,
+            truncate: false,
+            seek_forward: false,
+            seek_backward: false,
+            seek_start: false,
+            seek_end: false,
+            tell: false,
+            lock: false,
+        }
+    }
+    state_chain!(walk);
+    state_chain!(rename);
+    state_chain!(make);
+    state_chain!(remove);
+    state_chain!(read);
+    state_chain!(insert);
+    state_chain!(overwrite);
+    state_chain!(truncate);
+    state_chain!(seek_forward);
+    state_chain!(seek_backward);
+    state_chain!(seek_start);
+    state_chain!(seek_end);
 }
 pub struct Descriptor {
-    index: u64,
+    index: usize,
 }
 impl Descriptor {
-    pub fn read_state(self: &mut Self) -> Result<State, ()> {}
+    pub fn read_state(self: &mut Self) -> Result<State, ()> {
+        let mut buffer = Buffer::new(1);
+        buffer.as_mut_slice()[8..16].copy_from_slice(&(MsgSelector::ReadState as usize).to_le_bytes());
+        let mut state = State::new()
+    }
     pub fn write_state(self: &mut Self, state: &State) -> Result<(), ()> {}
     pub fn walk(self: &mut Self, path: &str) -> Result<Descriptor, ()> {}
     pub fn list(self: &mut Self, count: usize) -> Result<&mut [&mut str], ()> {}
     pub fn list_peek(self: &mut Self, count: usize) -> Result<&mut [&mut str], ()> {}
-    pub fn list_overwrite(self: &mut Self, new_name: &str) -> Result<(), ()> {}
-    pub fn list_seek_relative(self: &mut Self, offset: isize) -> Result<(), ()> {}
-    pub fn list_seek_absolute(self: &mut Self, offset: isize) -> Result<(), ()> {}
+    pub fn list_seek_forward(self: &mut Self, offset: usize) -> Result<(), ()> {}
+    pub fn list_seek_backward(self: &mut Self, offset: usize) -> Result<(), ()> {}
+    pub fn list_seek_start(self: &mut Self, offset: usize) -> Result<(), ()> {}
+    pub fn list_seek_end(self: &mut Self, offset: usize) -> Result<(), ()> {}
     pub fn list_tell(self: &mut Self) -> usize {}
     pub fn make(self: &mut Self, child_state: &State, child_name: &str) -> Result<Descriptor, ()> {}
     pub fn remove(self: &mut Self, child_name: &str) -> Result<(), ()> {}
-    pub fn read(self: &mut Self, length: usize) -> Result<&mut [u8], ()> {}
-    pub fn peek(self: &mut Self, length: usize) -> Result<&mut [u8], ()> {}
+    pub fn rename(self: &mut Self, new_name: &str) -> Result<(), ()> {}
+    pub fn read(self: &mut Self, length: usize) -> Result<Buffer, ()> {}
+    pub fn peek(self: &mut Self, length: usize) -> Result<Buffer, ()> {}
     pub fn insert(self: &mut Self, content: Buffer, length: usize) -> Result<usize, ()> {}
     pub fn overwrite(self: &mut Self, content: Buffer, length: usize) -> Result<usize, ()> {}
+    pub fn truncate(self: &mut Self, length: usize) -> Result<usize, ()> {}
+    pub fn seek_forward(self: &mut Self, offset: usize) -> Result<usize, ()> {}
+    pub fn seek_backward(self: &mut Self, offset: usize) -> Result<usize, ()> {}
+    pub fn seek_start(self: &mut Self, offset: usize) -> Result<usize, ()> {}
+    pub fn seek_end(self: &mut Self, offset: usize) -> Result<usize, ()> {}
 }
 impl Drop for Descriptor {
     fn drop(&mut self) {
