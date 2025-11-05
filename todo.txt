@@ -18,7 +18,7 @@ custom bootstrap gdt
 solidify tethys filesystem interface
 // complete ^^
 // to do \/ \/
-update ABI.md from seek_absolute to seek_start and seek_end, and from seek_relative to seek_forward and seek_backward
+update ABI.md from seek_absolute to seek_start and seek_end, and from seek_relative to seek_forward and seek_backward, and reorder list_overwrite/rename, and update signedness
 paging structures & functions
 boilerplate kickstart process
 kickstart process elf loader
