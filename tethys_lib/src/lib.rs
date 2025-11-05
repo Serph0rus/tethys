@@ -201,6 +201,7 @@ impl Descriptor {
     pub fn walk(self: &mut Self, path: &str) -> Result<Descriptor, ()> {}
     pub fn list(self: &mut Self, count: usize) -> Result<&mut [&mut str], ()> {}
     pub fn list_peek(self: &mut Self, count: usize) -> Result<&mut [&mut str], ()> {}
+    pub fn list_overwrite(self: &mut Self, new_name: &str) -> Result<(), ()> {}
     pub fn list_seek_relative(self: &mut Self, offset: isize) -> Result<(), ()> {}
     pub fn list_seek_absolute(self: &mut Self, offset: isize) -> Result<(), ()> {}
     pub fn list_tell(self: &mut Self) -> usize {}

@@ -52,8 +52,8 @@ get a new descriptor pointing to one of a descriptor's children. walking with no
 get the names of the next **count** children of **descriptor**.
 ### (lp) list_peek(descriptor, count) -> [\&str]
 get the next **count** children of **descriptor** without advancing the list head forward.
-### (lw) list_write(descriptor, old_name, new_name) -> ()
-move **descriptor**'s child, named **old_name**, to be referred to as **new_name**.
+### (lw) list_overwrite(descriptor, new_name) -> ()
+move **descriptor**'s child at the current list head to be referred to as **new_name**.
 ### (lr) list_seek_relative(descriptor, offset) -> ()
 move **descriptor**'s list head forward or backward by **offset** (signed).
 ### (la) list_seek_absolute(descriptor, offset) -> ()
