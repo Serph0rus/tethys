@@ -6,13 +6,6 @@ use crate::{
     pfa::{PAGE_FRAME_ALLOCATOR, allocate_frame},
     println,
 };
-#[repr(align(4096))]
-struct DoubleFaultStack {
-    memory: [u8; SYSTEM_STACK_SIZE as usize],
-}
-pub static DOUBLE_FAULT_STACK: DoubleFaultStack = DoubleFaultStack {
-    memory: [0; SYSTEM_STACK_SIZE as usize],
-};
 pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
     let mut offset_table = get_offset_table();
     println!("constructed offset page table mapper...");

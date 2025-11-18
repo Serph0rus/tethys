@@ -69,3 +69,4 @@ impl Entry {
         )
     }
 }
+pub fn initialise()

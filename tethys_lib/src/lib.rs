@@ -271,7 +271,7 @@ impl State {
 }
 pub struct Descriptor {
     index: usize,
-}
+}/*
 impl Descriptor {
     pub fn read_state(self: &mut Self) -> Result<State, ()> {
         let mut buffer = Buffer::new(1);
@@ -299,7 +299,7 @@ impl Descriptor {
     pub fn seek_backward(self: &mut Self, offset: usize) -> Result<usize, ()> {}
     pub fn seek_start(self: &mut Self, offset: usize) -> Result<usize, ()> {}
     pub fn seek_end(self: &mut Self, offset: usize) -> Result<usize, ()> {}
-}
+}*/
 impl Drop for Descriptor {
     fn drop(&mut self) {
         todo!()
