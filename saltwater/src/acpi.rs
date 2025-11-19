@@ -144,7 +144,7 @@ pub fn bootstrap_initialise(boot_info: &mut bootloader_api::BootInfo) {
     match acpi_platform_guard.as_mut() {
         Some(..) => panic!("ACPI platform initialised before ACPI bootstrap initialiser called!"),
         None => {
-            acpi_platform_guard.insert(
+            let _ = acpi_platform_guard.insert(
                 acpi::platform::AcpiPlatform::new(
                     unsafe {
                         let acpi_tables = acpi::AcpiTables::from_rsdp(
@@ -166,7 +166,7 @@ pub fn bootstrap_initialise(boot_info: &mut bootloader_api::BootInfo) {
         }
     }
     println!("constructed acpi platform structure...");
-    PROCESSOR_COUNT.write().insert(
+    let _ = PROCESSOR_COUNT.write().insert(
         acpi_platform_guard
             .as_ref()
             .expect("ACPI platform could not be acquired!")
