@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![feature(abi_x86_interrupt)]
 pub extern crate alloc;
 mod acpi;
 mod allocator;
@@ -15,7 +16,9 @@ mod port;
 mod qemu;
 mod istacks;
 mod pcb;
-//mod idt;
+mod kickstart;
+mod idt;
+mod processor;
 use crate::hcf::hcf;
 const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 6] = [
     mapping::initialise,
