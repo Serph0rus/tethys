@@ -1,3 +1,8 @@
+use bootloader_api::info::MemoryRegionKind;
+use x86_64::{
+    structures::paging::{FrameAllocator, FrameDeallocator, PhysFrame, Size4KiB},
+    PhysAddr,
+};
 use crate::{
     mapping::{PAGE_SIZE, physical_to_virtual_address},
     println,
@@ -7,6 +12,7 @@ use spinning_top::Spinlock;
 pub struct BitmapPageFrameAllocator {
     bitmap: &'static mut [u8],
     last_allocated_frame_index: usize,
+    total_frames: usize,
 }
 pub static PAGE_FRAME_ALLOCATOR: Spinlock<Option<BitmapPageFrameAllocator>> = Spinlock::new(None);
 pub fn initialise(boot_info: &mut bootloader_api::BootInfo) {
@@ -26,26 +32,25 @@ pub fn initialise(boot_info: &mut bootloader_api::BootInfo) {
             }
         )
     }
-    let bitmap_size: u64 = (boot_info
+    let total_memory = boot_info
         .memory_regions
         .iter()
-        .filter(|x| x.kind == bootloader_api::info::MemoryRegionKind::Usable)
+        .filter(|x| x.kind == MemoryRegionKind::Usable)
         .map(|x| x.end)
         .max()
-        .expect("bootloader did not provide any usable memory regions!")
-        / PAGE_SIZE
-        + 7)
-        / 8;
+        .expect("bootloader did not provide any memory regions!");
+    let total_frames = (total_memory / PAGE_SIZE) as usize;
+    let bitmap_size = (total_frames + 7) / 8;
     println!(
-        "calculated necessary page frame allocator bitmap size as 0x{:x} bytes...",
-        bitmap_size
+        "calculated necessary page frame allocator bitmap size as 0x{:x} bytes for 0x{:x} total frames...",
+        bitmap_size, total_frames
     );
     let bitmap_address = boot_info
         .memory_regions
         .iter()
         .find(|x| {
             (x.kind == bootloader_api::info::MemoryRegionKind::Usable)
-                & (x.end - x.start > bitmap_size)
+                & ((x.end - x.start) as usize > bitmap_size)
         })
         .expect("no memory regions were large enough to store page frame bitmap!")
         .start;
@@ -59,10 +64,11 @@ pub fn initialise(boot_info: &mut bootloader_api::BootInfo) {
         bitmap: unsafe {
             slice::from_raw_parts_mut(
                 physical_to_virtual_address(bitmap_address) as *mut u8,
-                bitmap_size as usize,
+                bitmap_size,
             )
         },
         last_allocated_frame_index: 0,
+        total_frames,
     });
     println!("constructed page frame allocator bitmap...");
     allocator.bitmap.fill(u8::MAX);
@@ -72,13 +78,13 @@ pub fn initialise(boot_info: &mut bootloader_api::BootInfo) {
         .iter()
         .filter(|x| x.kind == bootloader_api::info::MemoryRegionKind::Usable)
     {
-        for frame in (memory_region.start / PAGE_SIZE)..((memory_region.end - 1) / PAGE_SIZE) {
-            allocator.bitmap[(frame / 8) as usize] &= !(1 << (frame % 8))
+        for frame_index in (memory_region.start / PAGE_SIZE)..((memory_region.end - 1) / PAGE_SIZE) {
+            allocator.bitmap[(frame_index / 8) as usize] &= !(1 << (frame_index % 8));
         }
     }
     println!("marked usable page frames as free in page frame allocator bitmap...");
-    for frame in (bitmap_address / PAGE_SIZE)..(bitmap_address + bitmap_size) / PAGE_SIZE + 1 {
-        allocator.bitmap[(frame / 8) as usize] |= 1 << (frame % 8);
+    for frame_index in (bitmap_address / PAGE_SIZE)..(bitmap_address + bitmap_size as u64) / PAGE_SIZE + 1 {
+        allocator.bitmap[(frame_index / 8) as usize] |= 1 << (frame_index % 8);
     }
     println!("marked page frame allocator bitmap as unusable within itself...");
     let free_page_count = allocator
@@ -92,27 +98,32 @@ pub fn initialise(boot_info: &mut bootloader_api::BootInfo) {
         free_page_count * PAGE_SIZE
     );
 }
-pub fn new_frame() -> Option<usize> {
-    let mut page_frame_allocator_guard = PAGE_FRAME_ALLOCATOR.lock();
-    let page_frame_allocator = page_frame_allocator_guard.as_mut().expect("page frame allocator not initialised before page frame allocation attempted!");
-    for frame_index in page_frame_allocator.last_allocated_frame_index..page_frame_allocator.bitmap.len() * 8 {
-        if page_frame_allocator.bitmap[frame_index / 8] & (1 << (frame_index % 8)) == 0 {
-            page_frame_allocator.bitmap[frame_index / 8] |= 1 << (frame_index % 8);
-            page_frame_allocator.last_allocated_frame_index = frame_index;
-            return Some(frame_index);
+unsafe impl FrameAllocator<Size4KiB> for BitmapPageFrameAllocator {
+    fn allocate_frame(&mut self) -> Option<PhysFrame> {
+        for frame_index in self.last_allocated_frame_index..self.total_frames {
+            if self.bitmap[frame_index / 8] & (1 << (frame_index % 8)) == 0 {
+                self.bitmap[frame_index / 8] |= 1 << (frame_index % 8);
+                self.last_allocated_frame_index = frame_index;
+                
+                let physical_address = PhysAddr::new(frame_index as u64 * PAGE_SIZE);
+                return Some(PhysFrame::containing_address(physical_address));
+            }
         }
-    }
-    for frame_index in 0..page_frame_allocator.last_allocated_frame_index {
-        if page_frame_allocator.bitmap[frame_index / 8] & (1 << (frame_index % 8)) == 0 {
-            page_frame_allocator.bitmap[frame_index / 8] |= 1 << (frame_index % 8);
-            page_frame_allocator.last_allocated_frame_index = frame_index;
-            return Some(frame_index);
+        for frame_index in 0..self.last_allocated_frame_index {
+            if self.bitmap[frame_index / 8] & (1 << (frame_index % 8)) == 0 {
+                self.bitmap[frame_index / 8] |= 1 << (frame_index % 8);
+                self.last_allocated_frame_index = frame_index;
+                
+                let physical_address = PhysAddr::new(frame_index as u64 * PAGE_SIZE);
+                return Some(PhysFrame::containing_address(physical_address));
+            }
         }
+        None
     }
-    None
 }
-pub fn drop_frame(frame_index: usize) {
-    let mut page_frame_allocator_guard = PAGE_FRAME_ALLOCATOR.lock();
-    let page_frame_allocator = page_frame_allocator_guard.as_mut().expect("page frame allocator not initialised before page frame deallocation attempted!");
-    page_frame_allocator.bitmap[frame_index / 8] &= !(1 << (frame_index % 8))
+impl FrameDeallocator<Size4KiB> for BitmapPageFrameAllocator {
+    unsafe fn deallocate_frame(&mut self, frame: PhysFrame) {
+        let frame_index = frame.start_address().as_u64() / PAGE_SIZE;
+        self.bitmap[frame_index as usize / 8] &= !(1 << (frame_index % 8));
+    }
 }
