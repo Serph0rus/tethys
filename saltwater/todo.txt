@@ -12,9 +12,11 @@ page frame allocator
 qemu exit codes
 fix pfa bitmap
 system stacks
+global descriptor table
+embed kickstart elf into kernel
+userspace kickstart hello world program
 // complete ^^
 // to do \/ \/
-global descriptor table
 process control block
 track page mappings for each process
 solidify tethys filesystem interface
@@ -28,8 +30,6 @@ create system-owned filesystem interface
 create system-owned filesystem for qemu debugcon port
 context switching
 kickstart elf parsing
-embed elf into kernel
-userspace hello world program
 add process's scheduler state to pcb
 basic round-robin scheduler for all eligible processes
 ap trampoline
