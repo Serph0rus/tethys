@@ -1,6 +1,6 @@
 use crate::{mapping::physical_to_virtual_address, port, println};
 use core::ptr::NonNull;
-use spinning_top::Spinlock;
+use spinning_top::{RwSpinlock, Spinlock};
 #[derive(Clone)]
 struct SystemAcpiHandler {}
 impl acpi::Handler for SystemAcpiHandler {
@@ -131,17 +131,17 @@ impl acpi::Handler for SystemAcpiHandler {
     }
 }
 static SYSTEM_ACPI_HANDLER: SystemAcpiHandler = SystemAcpiHandler {};
-pub static ACPI_PLATFORM: Spinlock<Option<acpi::platform::AcpiPlatform<SystemAcpiHandler>>> =
-    Spinlock::new(None);
-pub static PROCESSOR_COUNT: Spinlock<Option<usize>> = Spinlock::new(None);
+pub static ACPI_PLATFORM: RwSpinlock<Option<acpi::platform::AcpiPlatform<SystemAcpiHandler>>> =
+    RwSpinlock::new(None);
+pub static PROCESSOR_COUNT: RwSpinlock<Option<usize>> = RwSpinlock::new(None);
 pub fn bootstrap_initialise(boot_info: &mut bootloader_api::BootInfo) {
     println!(
         "found ACPI root system description pointer at address 0x{:x}...",
         boot_info.rsdp_addr.into_option().unwrap()
     );
-    let mut acpi_platform_guard = ACPI_PLATFORM.lock();
+    let mut acpi_platform_guard = ACPI_PLATFORM.write();
     println!("acquired acpi platform guard...");
-    match acpi_platform_guard.as_ref() {
+    match acpi_platform_guard.as_mut() {
         Some(..) => panic!("ACPI platform initialised before ACPI bootstrap initialiser called!"),
         None => {
             acpi_platform_guard.insert(
@@ -166,7 +166,7 @@ pub fn bootstrap_initialise(boot_info: &mut bootloader_api::BootInfo) {
         }
     }
     println!("constructed acpi platform structure...");
-    PROCESSOR_COUNT.lock().insert(
+    PROCESSOR_COUNT.write().insert(
         acpi_platform_guard
             .as_ref()
             .expect("ACPI platform could not be acquired!")
@@ -179,6 +179,6 @@ pub fn bootstrap_initialise(boot_info: &mut bootloader_api::BootInfo) {
     );
     println!(
         "counted {} logical processor/s...",
-        PROCESSOR_COUNT.lock().unwrap()
+        PROCESSOR_COUNT.read().unwrap()
     );
 }

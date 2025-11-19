@@ -17,14 +17,13 @@ mod stacks;
 mod pcb;
 //mod idt;
 use crate::hcf::hcf;
-const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 5] = [
+const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 6] = [
     mapping::initialise,
-    gdt::bootstrap_initialise,
     allocator::bootstrap_initialise,
     acpi::bootstrap_initialise,
     frame::initialise,
-    // stacks::initialise,
-    // gdt::initialise,
+    stacks::initialise,
+    gdt::initialise,
 ];
 bootloader_api::entry_point!(main, config = &config::BOOTLOADER_CONFIG);
 pub fn main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {

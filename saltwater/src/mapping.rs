@@ -13,9 +13,8 @@ pub const FRAMEBUFFER: u64 = BOOTSTRAP_STACK + SIXTEEN_TERABYTES;
 pub const KERNEL_STACKS: u64 = FRAMEBUFFER + SIXTEEN_TERABYTES;
 pub const INTERRUPT_STACKS: u64 = KERNEL_STACKS + TWELVE_TERABYTES;
 pub const DOUBLE_FAULT_STACKS: u64 = INTERRUPT_STACKS + ONE_TERABYTE;
-pub const NONMASKABLE_STACKS: u64 = DOUBLE_FAULT_STACKS + ONE_TERABYTE;
-pub const MACHINE_CHECK_STACKS: u64 = NONMASKABLE_STACKS + ONE_TERABYTE;
-pub const DIRECT_PHYSICAL: u64 = MACHINE_CHECK_STACKS + ONE_TERABYTE;
+pub const CRITICAL_STACKS: u64 = DOUBLE_FAULT_STACKS + ONE_TERABYTE;
+pub const DIRECT_PHYSICAL: u64 = CRITICAL_STACKS + ONE_TERABYTE;
 pub const INTERRUPT_STACK_SIZE: u64 = ONE_MEGABYTE;
 pub const KERNEL_STACK_SIZE: u64 = SIXTEEN_MEGABYTES;
 pub const fn kernel_stack_address(index: usize) -> u64 {
@@ -27,11 +26,8 @@ pub const fn interrupt_stack_address(index: usize) -> u64 {
 pub const fn double_fault_stack_address(index: usize) -> u64 {
     DOUBLE_FAULT_STACKS + INTERRUPT_STACK_SIZE * index as u64
 }
-pub const fn nonmaskable_stack_address(index: usize) -> u64 {
-    NONMASKABLE_STACKS + INTERRUPT_STACK_SIZE * index as u64
-}
-pub const fn machine_check_stack_address(index: usize) -> u64 {
-    MACHINE_CHECK_STACKS + INTERRUPT_STACK_SIZE * index as u64
+pub const fn critical_stack_address(index: usize) -> u64 {
+    CRITICAL_STACKS + INTERRUPT_STACK_SIZE * index as u64
 }
 pub const fn physical_to_virtual_address(physical: u64) -> u64 {
     DIRECT_PHYSICAL + physical

@@ -1,40 +1,39 @@
-use x86_64::structures::paging::{FrameAllocator, Mapper};
-
 use crate::{
-    mapping::{self, PAGE_SIZE, SYSTEM_STACK_SIZE},
-    page::get_offset_table,
-    pfa::{PAGE_FRAME_ALLOCATOR, allocate_frame},
+    frame::PAGE_FRAME_ALLOCATOR,
+    mapping::{
+        INTERRUPT_STACK_SIZE, PAGE_SIZE, critical_stack_address, double_fault_stack_address,
+        interrupt_stack_address,
+    },
+    page::{get_current_pml4, get_offset_table},
     println,
 };
+use x86_64::{
+    VirtAddr,
+    structures::paging::{FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB},
+};
 pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
-    let mut offset_table = get_offset_table();
+    let mut table = get_offset_table(unsafe { &mut *get_current_pml4() });
     println!("constructed offset page table mapper...");
-    let mut page_frame_allocator_guard = PAGE_FRAME_ALLOCATOR.lock();
-    println!("acquired page frame allocator guard...");
-    let page_frame_allocator = page_frame_allocator_guard
+    let mut allocator_guard = PAGE_FRAME_ALLOCATOR.lock();
+    let allocator = allocator_guard
         .as_mut()
-        .expect("page frame allocator was not initialised before allocating system stacks!");
-    for processor_index in 1..crate::acpi::PROCESSOR_COUNT
-        .lock()
+        .expect("page frame allocator not initialised before allocating interrupt stacks!");
+    for processor in 0..crate::acpi::PROCESSOR_COUNT
+        .read()
         .expect("processors not counted before allocation of system stacks!")
     {
-        for frame_index in 0..(SYSTEM_STACK_SIZE / PAGE_SIZE) {
-            unsafe {
-                offset_table.map_to(
-                    x86_64::structures::paging::Page::containing_address(x86_64::VirtAddr::new(
-                        mapping::system_stack_virtual_address(processor_index)
-                            + frame_index * PAGE_SIZE,
-                    )),
-                    page_frame_allocator
-                        .allocate_frame()
-                        .expect("exhausted page frames while allocating system stacks!"),
-                    x86_64::structures::paging::PageTableFlags::PRESENT
-                        | x86_64::structures::paging::PageTableFlags::WRITABLE
-                        | x86_64::structures::paging::PageTableFlags::GLOBAL,
-                    page_frame_allocator,
-                );
+        for (name, stack_address) in [
+            ("interrupt", interrupt_stack_address(processor)),
+            ("double fault", double_fault_stack_address(processor)),
+            ("critical", critical_stack_address(processor)),
+        ] {
+            for page in (0..(INTERRUPT_STACK_SIZE / PAGE_SIZE)).map(|x| Page::<Size4KiB>::containing_address(VirtAddr::new(stack_address + x * PAGE_SIZE))) {
+                unsafe {table.map_to(page, allocator.allocate_frame().expect("failed to allocate frame during interrupt stack mapping!"), PageTableFlags::ACCESSED | PageTableFlags::GLOBAL | PageTableFlags::WRITABLE | PageTableFlags::PRESENT, allocator).expect("failed to map page during interrupt stack mapping!");}
             }
+            println!("allocated and mapped 0x{:x}-byte {} stack for processor no.{} at address 0x{:x}", INTERRUPT_STACK_SIZE, name, processor, stack_address);
         }
     }
     println!("allocated and mapped system stacks...");
+    x86_64::instructions::tlb::flush_all();
+
 }
