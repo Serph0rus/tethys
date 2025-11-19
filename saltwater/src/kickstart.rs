@@ -1,0 +1,1 @@
+const KICKSTART_BYTES: &[u8] = if cfg!(debug_assertions) {include_bytes!("../../target/x86_64-unknown-none/debug/kickstart")} else {include_bytes!("../../target/x86_64-unknown-none/release/kickstart")};
