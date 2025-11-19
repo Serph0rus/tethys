@@ -1,3 +1,5 @@
+use x86_64::{registers::control::Cr3, structures::paging::{OffsetPageTable, PageTable}};
+use crate::mapping;
 #[repr(C, packed)]
 struct Entry(u64);
 const ENTRY_PRESENT: u64 = 0;
@@ -69,4 +71,9 @@ impl Entry {
         )
     }
 }
-pub fn initialise()
+pub fn get_current_pml4<'a>() -> *mut PageTable {
+    Cr3::read().0.start_address().as_u64() as *mut PageTable
+}
+pub fn get_offset_table<'a>(table: &'a mut PageTable) -> OffsetPageTable<'a> {
+    unsafe {OffsetPageTable::new(table, x86_64::VirtAddr::new(mapping::DIRECT_PHYSICAL))}
+}

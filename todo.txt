@@ -16,10 +16,10 @@ split system stacks into interrupt stacks, per-process system stacks, and a boot
 gdt structures for dynamic allocation
 custom bootstrap gdt
 solidify tethys filesystem interface
+paging structures & functions
 // complete ^^
 // to do \/ \/
-update ABI.md from seek_absolute to seek_start and seek_end, and from seek_relative to seek_forward and seek_backward, and reorder list_overwrite/rename, and update signedness
-paging structures & functions
+rewrite ABI.md
 boilerplate kickstart process
 kickstart process elf loader
 context switching
@@ -55,6 +55,5 @@ ap trampoline
 initialise all other processors to scheduler
 switch to ring-3 unprivileged user processes
 calculate priorities of processes based on heirarchy
-move away from x86_64 crate
 implement lazy allocation for mapped pages
 implement copy-on-write for sent pages
