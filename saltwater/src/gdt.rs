@@ -1,69 +1,77 @@
-use crate::{acpi::PROCESSOR_COUNT, mapping, println};
+use crate::{acpi::PROCESSOR_COUNT, mapping, println, idt::{SYSCALL_IST_INDEX, INTERRUPT_IST_INDEX, DOUBLE_FAULT_IST_INDEX, CRITICAL_IST_INDEX}};
 use alloc::{boxed::Box, vec::Vec};
-use core::arch::asm;
-use spinning_top::RwSpinlock;
+use spinning_top::Spinlock;
 use x86_64::{
-    registers::segmentation::Segment,
-    structures::{
+    instructions::tables::load_tss, registers::segmentation::{self, Segment}, structures::{
         gdt::{Descriptor, GlobalDescriptorTable, SegmentSelector},
         tss::TaskStateSegment,
-    },
+    }
 };
-static GLOBAL_DESCRIPTOR_TABLES: RwSpinlock<Vec<GlobalDescriptorTable>> =
-    RwSpinlock::new(Vec::new());
+pub struct Selectors {
+    pub kernel_code: SegmentSelector,
+    pub kernel_data: SegmentSelector,
+    pub user_code: SegmentSelector,
+    pub user_data: SegmentSelector,
+    pub task_state: SegmentSelector,
+}
+pub static GLOBAL_DESCRIPTOR_TABLES: Spinlock<Vec<(&'static mut GlobalDescriptorTable, Selectors)>> =
+    Spinlock::new(Vec::new());
 static KERNEL_CODE_SELECTOR: SegmentSelector =
     SegmentSelector::new(1, x86_64::PrivilegeLevel::Ring0);
 static KERNEL_DATA_SELECTOR: SegmentSelector =
     SegmentSelector::new(2, x86_64::PrivilegeLevel::Ring0);
 static USER_CODE_SELECTOR: SegmentSelector = SegmentSelector::new(3, x86_64::PrivilegeLevel::Ring3);
 static USER_DATA_SELECTOR: SegmentSelector = SegmentSelector::new(4, x86_64::PrivilegeLevel::Ring3);
+static TSS_SELECTOR: SegmentSelector = SegmentSelector::new(5, x86_64::PrivilegeLevel::Ring0);
 pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
-    let mut global_descriptor_tables = GLOBAL_DESCRIPTOR_TABLES.write();
+    let mut global_descriptor_tables = GLOBAL_DESCRIPTOR_TABLES.lock();
     global_descriptor_tables.append(
         &mut (0..PROCESSOR_COUNT
             .read()
             .expect("cores not counted before initialisation of global descriptor table!"))
-            .map(|x| {
-                let mut gdt = GlobalDescriptorTable::new();
-                gdt.append(Descriptor::kernel_code_segment());
-                gdt.append(Descriptor::kernel_data_segment());
-                gdt.append(Descriptor::user_code_segment());
-                gdt.append(Descriptor::user_data_segment());
+            .map(|processor| {
+                let mut gdt = Box::new(GlobalDescriptorTable::new());
                 let mut tss = Box::new(TaskStateSegment::new());
                 tss.privilege_stack_table[0] =
-                    x86_64::VirtAddr::new(mapping::kernel_stack_address(x));
-                gdt.append(Descriptor::tss_segment(Box::leak(tss)));
-                gdt
+                    x86_64::VirtAddr::new(mapping::syscall_stack_address(processor));
+                tss.interrupt_stack_table[SYSCALL_IST_INDEX] = x86_64::VirtAddr::new(mapping::syscall_stack_address(processor));
+                tss.interrupt_stack_table[INTERRUPT_IST_INDEX] = x86_64::VirtAddr::new(mapping::interrupt_stack_address(processor));
+                tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX] = x86_64::VirtAddr::new(mapping::double_fault_stack_address(processor));
+                tss.interrupt_stack_table[CRITICAL_IST_INDEX] = x86_64::VirtAddr::new(mapping::critical_stack_address(processor));
+                let selectors = Selectors {
+                    kernel_code: gdt.append(Descriptor::kernel_code_segment()),
+                    kernel_data: gdt.append(Descriptor::kernel_data_segment()),
+                    user_code: gdt.append(Descriptor::user_code_segment()),
+                    user_data: gdt.append(Descriptor::user_data_segment()),
+                    task_state: gdt.append(Descriptor::tss_segment(Box::leak(tss))),
+                };
+                (Box::leak(gdt), selectors)
             })
             .collect(),
     );
     println!("constructed bootstrap global descriptor table...");
 }
-pub unsafe fn load(index: usize) {
+pub unsafe fn load(gdt: &'static GlobalDescriptorTable, selectors: Selectors) {
     unsafe {
-        let global_descriptor_tables = GLOBAL_DESCRIPTOR_TABLES.read();
-        asm!("lgdt [{}]", in(reg) global_descriptor_tables.get(index).unwrap_or_else(|| panic!("core {} could not find global descriptor table!", index)), options(readonly, nostack, preserves_flags));
-        drop(global_descriptor_tables);
-        println!("loaded bootstrap global descriptor table...");
-        x86_64::registers::segmentation::CS::set_reg(
-            x86_64::registers::segmentation::SegmentSelector(KERNEL_CODE_SELECTOR.0),
+        gdt.load();
+        segmentation::CS::set_reg(
+            selectors.kernel_code,
         );
-        println!("far-returned into new code segment...");
-        x86_64::registers::segmentation::DS::set_reg(
-            x86_64::registers::segmentation::SegmentSelector(KERNEL_DATA_SELECTOR.0),
+        segmentation::DS::set_reg(
+            selectors.kernel_data,
         );
-        x86_64::registers::segmentation::ES::set_reg(
-            x86_64::registers::segmentation::SegmentSelector(KERNEL_DATA_SELECTOR.0),
+        segmentation::ES::set_reg(
+            selectors.kernel_data,
         );
-        x86_64::registers::segmentation::FS::set_reg(
-            x86_64::registers::segmentation::SegmentSelector(KERNEL_DATA_SELECTOR.0),
+        segmentation::FS::set_reg(
+            selectors.kernel_data,
         );
-        x86_64::registers::segmentation::GS::set_reg(
-            x86_64::registers::segmentation::SegmentSelector(KERNEL_DATA_SELECTOR.0),
+        segmentation::GS::set_reg(
+            selectors.kernel_data,
         );
-        x86_64::registers::segmentation::SS::set_reg(
-            x86_64::registers::segmentation::SegmentSelector(KERNEL_DATA_SELECTOR.0),
+        segmentation::SS::set_reg(
+            selectors.kernel_data,
         );
-        println!("reloaded data segment registers...");
+        load_tss(selectors.task_state);
     };
 }
