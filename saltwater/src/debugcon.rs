@@ -24,5 +24,5 @@ macro_rules! println {
 }
 #[doc(hidden)]
 pub fn _print(format: fmt::Arguments) {
-    DebugconWriter::write_fmt(&mut DEBUGCON_WRITER.lock(), format);
+    let _ = DebugconWriter::write_fmt(&mut DEBUGCON_WRITER.lock(), format);
 }
