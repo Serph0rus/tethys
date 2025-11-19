@@ -13,7 +13,7 @@ mod page;
 mod panic;
 mod port;
 mod qemu;
-mod stacks;
+mod istacks;
 mod pcb;
 //mod idt;
 use crate::hcf::hcf;
@@ -22,7 +22,7 @@ const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 6] = [
     allocator::bootstrap_initialise,
     acpi::bootstrap_initialise,
     frame::initialise,
-    stacks::initialise,
+    istacks::initialise,
     gdt::initialise,
 ];
 bootloader_api::entry_point!(main, config = &config::BOOTLOADER_CONFIG);
