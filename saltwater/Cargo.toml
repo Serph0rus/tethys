@@ -4,6 +4,9 @@ version = "0.3.0"
 authors = ["Tanika Claire Mellifont-Young"]
 edition = "2024"
 
+[build-dependencies]
+kickstart = { path = "../kickstart", artifact = "bin", target = "x86_64-unknown-none" }
+
 [dependencies]
 acpi = "6.0.1"
 bitflags = "2.10.0"
@@ -11,10 +14,6 @@ bootloader_api = "0.11.12"
 linked_list_allocator = "0.10.5"
 spinning_top = "0.3.0"
 x86_64 = "0.15.2"
-
-[dependencies.kickstart]
-version = "0.1.0"
-features = []
 
 [dependencies.lazy_static]
 version = "1.5.0"
