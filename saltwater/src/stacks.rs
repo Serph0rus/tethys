@@ -22,18 +22,36 @@ pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
         .read()
         .expect("processors not counted before allocation of system stacks!")
     {
+        println!("initialising stacks for processor no. {}...", processor);
         for (name, stack_address) in [
             ("interrupt", interrupt_stack_address(processor)),
             ("double fault", double_fault_stack_address(processor)),
             ("critical", critical_stack_address(processor)),
         ] {
-            for page in (0..(INTERRUPT_STACK_SIZE / PAGE_SIZE)).map(|x| Page::<Size4KiB>::containing_address(VirtAddr::new(stack_address + x * PAGE_SIZE))) {
-                unsafe {table.map_to(page, allocator.allocate_frame().expect("failed to allocate frame during interrupt stack mapping!"), PageTableFlags::ACCESSED | PageTableFlags::GLOBAL | PageTableFlags::WRITABLE | PageTableFlags::PRESENT, allocator).expect("failed to map page during interrupt stack mapping!");}
+            for page in (0..(INTERRUPT_STACK_SIZE / PAGE_SIZE)).map(|x| {
+                Page::<Size4KiB>::containing_address(VirtAddr::new(stack_address + x * PAGE_SIZE))
+            }) {
+                unsafe {
+                    let _ = table
+                        .map_to(
+                            page,
+                            allocator
+                                .allocate_frame()
+                                .expect("failed to allocate frame during interrupt stack mapping!"),
+                            PageTableFlags::ACCESSED
+                                | PageTableFlags::WRITABLE
+                                | PageTableFlags::PRESENT,
+                            allocator,
+                        )
+                        .expect("failed to map page during interrupt stack mapping!");
+                }
             }
-            println!("allocated and mapped 0x{:x}-byte {} stack for processor no.{} at address 0x{:x}", INTERRUPT_STACK_SIZE, name, processor, stack_address);
+            println!(
+                "allocated and mapped 0x{:x}-byte {} stack at address 0x{:x}",
+                INTERRUPT_STACK_SIZE, name, stack_address
+            );
         }
     }
-    println!("allocated and mapped system stacks...");
+    println!("initialised system stacks...");
     x86_64::instructions::tlb::flush_all();
-
 }
