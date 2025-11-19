@@ -1,0 +1,19 @@
+[package]
+name = "kickstart"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+
+[profile.dev]
+panic = "abort"
+opt-level = 5
+
+[profile.release]
+panic = "abort"
+opt-level = 5
+
+[[bin]]
+name = "kickstart"
+test = false
+bench = false

@@ -11,4 +11,4 @@ bootloader = "0.11.12"
 saltwater = { path = "saltwater", artifact = "bin", target = "x86_64-unknown-none" }
 
 [workspace]
-members = ["saltwater", "simple_tree_filesystem", "tethys_lib"]
+members = ["kickstart","saltwater", "simple_tree_filesystem", "tethys_lib"]
