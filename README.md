@@ -8,7 +8,8 @@ a somewhat unixy operating system.
 the following are required:
 - rustup
 - cargo
-- a **nightly** x86_64-unknown-none cargo toolchain
+- a nightly cargo toolchain (**$ rustup toolchain install nightly**)
+- x86_64-unknown-none cargo target (**$ rustup target add x86_64-unknown-none**)
 - qemu-system-x86_64 (could also be listed in some package managers as part of qemu-full)
 - llvm-tools-preview (**$ rustup component add llvm-tools-preview**)
 
