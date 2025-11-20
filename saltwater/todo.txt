@@ -17,6 +17,9 @@ embed kickstart elf into kernel
 userspace kickstart hello world program
 // complete ^^
 // to do \/ \/
+rewrite priority.rs entirely
+redesign proc::Thread creation system
+check proc.rs for race conditions
 process control block
 track page mappings for each process
 solidify tethys filesystem interface

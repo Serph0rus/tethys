@@ -1,6 +1,6 @@
+use crate::println;
 use core::{alloc::GlobalAlloc, mem::MaybeUninit};
 use spinning_top::Spinlock;
-use crate::println;
 const BOOTSTRAP_HEAP_SIZE: usize = 0x100_000;
 static mut BOOTSTRAP_HEAP: [MaybeUninit<u8>; BOOTSTRAP_HEAP_SIZE] =
     [MaybeUninit::uninit(); BOOTSTRAP_HEAP_SIZE];

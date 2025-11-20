@@ -1,14 +1,14 @@
-use bootloader_api::info::MemoryRegionKind;
-use x86_64::{
-    structures::paging::{FrameAllocator, FrameDeallocator, PhysFrame, Size4KiB},
-    PhysAddr,
-};
 use crate::{
     mapping::{PAGE_SIZE, physical_to_virtual_address},
     println,
 };
+use bootloader_api::info::MemoryRegionKind;
 use core::{slice, u8};
 use spinning_top::Spinlock;
+use x86_64::{
+    PhysAddr,
+    structures::paging::{FrameAllocator, FrameDeallocator, PhysFrame, Size4KiB},
+};
 pub struct BitmapPageFrameAllocator {
     bitmap: &'static mut [u8],
     last_allocated_frame_index: usize,
@@ -78,12 +78,15 @@ pub fn initialise(boot_info: &mut bootloader_api::BootInfo) {
         .iter()
         .filter(|x| x.kind == bootloader_api::info::MemoryRegionKind::Usable)
     {
-        for frame_index in (memory_region.start / PAGE_SIZE)..((memory_region.end - 1) / PAGE_SIZE) {
+        for frame_index in (memory_region.start / PAGE_SIZE)..((memory_region.end - 1) / PAGE_SIZE)
+        {
             allocator.bitmap[(frame_index / 8) as usize] &= !(1 << (frame_index % 8));
         }
     }
     println!("marked usable page frames as free in page frame allocator bitmap...");
-    for frame_index in (bitmap_address / PAGE_SIZE)..(bitmap_address + bitmap_size as u64) / PAGE_SIZE + 1 {
+    for frame_index in
+        (bitmap_address / PAGE_SIZE)..(bitmap_address + bitmap_size as u64) / PAGE_SIZE + 1
+    {
         allocator.bitmap[(frame_index / 8) as usize] |= 1 << (frame_index % 8);
     }
     println!("marked page frame allocator bitmap as unusable within itself...");
@@ -104,14 +107,18 @@ unsafe impl FrameAllocator<Size4KiB> for BitmapPageFrameAllocator {
             if self.bitmap[frame_index / 8] & (1 << (frame_index % 8)) == 0 {
                 self.bitmap[frame_index / 8] |= 1 << (frame_index % 8);
                 self.last_allocated_frame_index = frame_index;
-                return Some(PhysFrame::containing_address(PhysAddr::new(frame_index as u64 * PAGE_SIZE)));
+                return Some(PhysFrame::containing_address(PhysAddr::new(
+                    frame_index as u64 * PAGE_SIZE,
+                )));
             }
         }
         for frame_index in 0..self.last_allocated_frame_index {
             if self.bitmap[frame_index / 8] & (1 << (frame_index % 8)) == 0 {
                 self.bitmap[frame_index / 8] |= 1 << (frame_index % 8);
                 self.last_allocated_frame_index = frame_index;
-                return Some(PhysFrame::containing_address(PhysAddr::new(frame_index as u64 * PAGE_SIZE)));
+                return Some(PhysFrame::containing_address(PhysAddr::new(
+                    frame_index as u64 * PAGE_SIZE,
+                )));
             }
         }
         None

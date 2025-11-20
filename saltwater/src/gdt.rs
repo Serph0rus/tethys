@@ -1,11 +1,17 @@
-use crate::{acpi::PROCESSOR_COUNT, mapping, println, idt::{SYSCALL_IST_INDEX, INTERRUPT_IST_INDEX, DOUBLE_FAULT_IST_INDEX, CRITICAL_IST_INDEX}};
+use crate::{
+    acpi::PROCESSOR_COUNT,
+    idt::{CRITICAL_IST_INDEX, DOUBLE_FAULT_IST_INDEX, INTERRUPT_IST_INDEX, SYSCALL_IST_INDEX},
+    mapping, println,
+};
 use alloc::{boxed::Box, vec::Vec};
 use spinning_top::Spinlock;
 use x86_64::{
-    instructions::tables::load_tss, registers::segmentation::{self, Segment}, structures::{
+    instructions::tables::load_tss,
+    registers::segmentation::{self, Segment},
+    structures::{
         gdt::{Descriptor, GlobalDescriptorTable, SegmentSelector},
         tss::TaskStateSegment,
-    }
+    },
 };
 pub struct Selectors {
     pub kernel_code: SegmentSelector,
@@ -14,8 +20,9 @@ pub struct Selectors {
     pub user_data: SegmentSelector,
     pub task_state: SegmentSelector,
 }
-pub static GLOBAL_DESCRIPTOR_TABLES: Spinlock<Vec<(&'static mut GlobalDescriptorTable, Selectors)>> =
-    Spinlock::new(Vec::new());
+pub static GLOBAL_DESCRIPTOR_TABLES: Spinlock<
+    Vec<(&'static mut GlobalDescriptorTable, Selectors)>,
+> = Spinlock::new(Vec::new());
 static KERNEL_CODE_SELECTOR: SegmentSelector =
     SegmentSelector::new(1, x86_64::PrivilegeLevel::Ring0);
 static KERNEL_DATA_SELECTOR: SegmentSelector =
@@ -34,10 +41,14 @@ pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
                 let mut tss = Box::new(TaskStateSegment::new());
                 tss.privilege_stack_table[0] =
                     x86_64::VirtAddr::new(mapping::syscall_stack_address(processor));
-                tss.interrupt_stack_table[SYSCALL_IST_INDEX] = x86_64::VirtAddr::new(mapping::syscall_stack_address(processor));
-                tss.interrupt_stack_table[INTERRUPT_IST_INDEX] = x86_64::VirtAddr::new(mapping::interrupt_stack_address(processor));
-                tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX] = x86_64::VirtAddr::new(mapping::double_fault_stack_address(processor));
-                tss.interrupt_stack_table[CRITICAL_IST_INDEX] = x86_64::VirtAddr::new(mapping::critical_stack_address(processor));
+                tss.interrupt_stack_table[SYSCALL_IST_INDEX] =
+                    x86_64::VirtAddr::new(mapping::syscall_stack_address(processor));
+                tss.interrupt_stack_table[INTERRUPT_IST_INDEX] =
+                    x86_64::VirtAddr::new(mapping::interrupt_stack_address(processor));
+                tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX] =
+                    x86_64::VirtAddr::new(mapping::double_fault_stack_address(processor));
+                tss.interrupt_stack_table[CRITICAL_IST_INDEX] =
+                    x86_64::VirtAddr::new(mapping::critical_stack_address(processor));
                 let selectors = Selectors {
                     kernel_code: gdt.append(Descriptor::kernel_code_segment()),
                     kernel_data: gdt.append(Descriptor::kernel_data_segment()),
@@ -54,24 +65,12 @@ pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
 pub unsafe fn load(gdt: &'static GlobalDescriptorTable, selectors: Selectors) {
     unsafe {
         gdt.load();
-        segmentation::CS::set_reg(
-            selectors.kernel_code,
-        );
-        segmentation::DS::set_reg(
-            selectors.kernel_data,
-        );
-        segmentation::ES::set_reg(
-            selectors.kernel_data,
-        );
-        segmentation::FS::set_reg(
-            selectors.kernel_data,
-        );
-        segmentation::GS::set_reg(
-            selectors.kernel_data,
-        );
-        segmentation::SS::set_reg(
-            selectors.kernel_data,
-        );
+        segmentation::CS::set_reg(selectors.kernel_code);
+        segmentation::DS::set_reg(selectors.kernel_data);
+        segmentation::ES::set_reg(selectors.kernel_data);
+        segmentation::FS::set_reg(selectors.kernel_data);
+        segmentation::GS::set_reg(selectors.kernel_data);
+        segmentation::SS::set_reg(selectors.kernel_data);
         load_tss(selectors.task_state);
     };
 }

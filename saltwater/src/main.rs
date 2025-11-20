@@ -15,18 +15,20 @@ mod panic;
 mod port;
 mod qemu;
 mod istacks;
-mod pcb;
+mod proc;
 mod kickstart;
 mod idt;
 mod core;
+mod kstacks;
 use crate::hcf::hcf;
-const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 6] = [
+const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 7] = [
     mapping::initialise,
     allocator::bootstrap_initialise,
     acpi::bootstrap_initialise,
     frame::initialise,
     istacks::initialise,
     gdt::initialise,
+    idt::initialise,
 ];
 bootloader_api::entry_point!(main, config = &config::BOOTLOADER_CONFIG);
 pub fn main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
@@ -45,9 +47,17 @@ pub fn main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     for initialiser in INITIALISERS {
         initialiser(boot_info);
     }
-    qemu::exit(qemu::ExitCode::Success);
     println!("successfully initialised saltwater tethys kernel! exiting initialisation procedure into kickstart process...");
     //elf::file::parse_ident(data)
+    let gdt_selectors = gdt::GLOBAL_DESCRIPTOR_TABLES.lock().pop().unwrap();
+    unsafe {gdt::load(gdt_selectors.0, gdt_selectors.1)};
+    println!("loaded gdt for bootstrap processor...");
+
     println!("successfully executed kickstart process!");
+    qemu::exit(qemu::ExitCode::Success);
+    match &mut boot_info.framebuffer {
+        bootloader_api::info::Optional::Some(framebuffer) => framebuffer.buffer_mut().iter_mut().skip(1).step_by(4).for_each(|x| *x = 255),
+        bootloader_api::info::Optional::None => panic!("no framebuffer!"),
+    }
     hcf();
 }
