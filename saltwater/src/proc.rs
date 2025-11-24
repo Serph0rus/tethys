@@ -8,21 +8,25 @@ use alloc::{
     sync::{Arc, Weak},
     vec::Vec,
 };
-use core::sync::atomic::{AtomicU64, Ordering};
+use core::sync::atomic::AtomicU64;
 use spinning_top::RwSpinlock;
 use x86_64::{
     PrivilegeLevel, VirtAddr,
     registers::rflags::RFlags,
     structures::{
         gdt::SegmentSelector,
-        idt::{InterruptStackFrame, InterruptStackFrameValue},
+        idt::InterruptStackFrameValue,
         paging::{FrameAllocator, PageTable, PhysFrame},
     },
 };
+enum MessageStatus {
+    Sent(Vec<PhysFrame>),
+    Received,
+    Responded(Vec<PhysFrame>),
+}
 struct Message {
     tag: u64,
-    frames: Vec<PhysFrame>,
-    sender: Weak<Thread>,
+    status: RwSpinlock<MessageStatus>,
 }
 struct State {
     walk: bool,
@@ -47,13 +51,23 @@ struct Binding {
     state_mask: State,
 }
 struct Server {
-    tag: u64,
-    messages: RwSpinlock<VecDeque<Arc<Message>>>,
     bindings: RwSpinlock<Vec<Box<[u8]>>>,
-    priority_sum: RwSpinlock<usize>,
+    kind: ServerKind,
+}
+enum ServerKind {
+    User(UserServer),
+    Kernel(KernelServer),
+}
+struct UserServer {
+    requests: RwSpinlock<VecDeque<Arc<Message>>>,
+    working: RwSpinlock<Vec<Arc<Message>>>,
+    priority_sum: Option<RwSpinlock<usize>>,
+}
+struct KernelServer {
 }
 enum Status {
     Ready,
+    Aborted,
     Executing(Weak<ProcessorData>),
     AwaitingRequest(Weak<Server>),
     AwaitingResponse(Weak<Message>),
@@ -77,11 +91,11 @@ pub struct PanicVectors {
     bound: u64,
     opcode: u64,
     device: u64,
-    double_fault: u64,
+    double: u64,
     stack: u64,
     protection: u64,
     page: u64,
-    floating_point: u64,
+    floating: u64,
     simd: u64,
     control: u64,
     security: u64,
@@ -97,6 +111,8 @@ pub struct Thread {
     pub inherited_priority: u64,
     pub kernel_stack: SyscallStack,
     pub panic_vectors: PanicVectors,
+    pub fs_base: u64,
+    pub gs_base: u64,
 }
 pub struct Process {
     pub set_priority: AtomicU64,
@@ -105,7 +121,8 @@ pub struct Process {
     pub pages: RwSpinlock<*mut PageTable>,
     pub threads: RwSpinlock<Vec<Arc<RwSpinlock<Thread>>>>,
     pub children: RwSpinlock<Vec<Arc<Process>>>,
-    pub messages: RwSpinlock<Vec<Message>>,
+    pub requests: RwSpinlock<Vec<Weak<Message>>>,
+    pub responses: RwSpinlock<VecDeque<Arc<Message>>>,
     pub servers: RwSpinlock<Vec<Arc<Server>>>,
     pub descriptors: RwSpinlock<Vec<Descriptor>>,
 }
@@ -128,7 +145,8 @@ impl Process {
             ) as *mut PageTable),
             threads: RwSpinlock::new(Vec::new()),
             children: RwSpinlock::new(Vec::new()),
-            messages: RwSpinlock::new(Vec::new()),
+            requests: RwSpinlock::new(Vec::new()),
+            responses: RwSpinlock::new(VecDeque::new()),
             servers: RwSpinlock::new(Vec::new()),
             descriptors: RwSpinlock::new(Vec::new()),
         });
@@ -161,15 +179,17 @@ impl Process {
                 bound: 0,
                 opcode: 0,
                 device: 0,
-                double_fault: 0,
+                double: 0,
                 stack: 0,
                 protection: 0,
                 page: 0,
-                floating_point: 0,
+                floating: 0,
                 simd: 0,
                 control: 0,
                 security: 0,
             },
+            fs_base: 0,
+            gs_base: 0,
         }));
         threads_write.push(new_thread.clone());
         new_thread
