@@ -22,9 +22,10 @@ track ownership of processes by parent processes
 create filesystem servers
 track ownership of filesystem servers & messages
 solidify syscall interface
+system stacks
 // complete ^^
 // to do \/ \/
-system stacks
+syscall stack deallocation
 context switching
 syscall testing
 basic round-robin scheduler
