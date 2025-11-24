@@ -110,10 +110,10 @@ pub struct Process {
     pub descriptors: RwSpinlock<Vec<Descriptor>>,
 }
 impl Process {
-    pub fn add_child(self_arc: Arc<Process>) -> Arc<Process> {
+    pub fn add_child(self_arc: Arc<Self>) -> Arc<Self> {
         let mut children_write = self_arc.children.write();
         let mut pfa_lock = PAGE_FRAME_ALLOCATOR.lock();
-        let new_process = Arc::new(Process {
+        let new_process = Arc::new(Self {
             set_priority: AtomicU64::new(0),
             propagated_priority: AtomicU64::new(0),
             parent: Some(Arc::downgrade(&self_arc)),
@@ -135,7 +135,7 @@ impl Process {
         children_write.push(new_process.clone());
         new_process
     }
-    pub fn add_thread(self_arc: Arc<Process>) -> Arc<RwSpinlock<Thread>> {
+    pub fn add_thread(self_arc: Arc<Self>) -> Arc<RwSpinlock<Thread>> {
         let mut threads_write = self_arc.threads.write();
         let new_thread = Arc::new(RwSpinlock::new(Thread {
             general_registers: [0; 16],
