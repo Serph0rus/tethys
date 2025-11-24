@@ -19,5 +19,5 @@ pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
     let idt_static = Box::leak(Box::new(idt));
     idt_static.load();
     let _ = IDT_STATIC.lock().insert(idt_static);
-    println!("loaded interrupt descriptor table!");
+    println!("loaded interrupt descriptor table...");
 }
