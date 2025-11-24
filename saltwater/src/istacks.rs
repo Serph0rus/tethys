@@ -7,10 +7,16 @@ use crate::{
     page::{get_current_pml4, get_offset_table},
     println,
 };
+use lazy_static::lazy_static;
 use x86_64::{
     VirtAddr,
     structures::paging::{FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB},
 };
+lazy_static! {
+    pub static ref KERNEL_PAGE_FLAGS: PageTableFlags = PageTableFlags::ACCESSED
+                                | PageTableFlags::WRITABLE
+                                | PageTableFlags::PRESENT;
+}
 pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
     let mut table = get_offset_table(unsafe { &mut *get_current_pml4() });
     println!("constructed offset page table mapper...");
@@ -38,9 +44,7 @@ pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
                             allocator
                                 .allocate_frame()
                                 .expect("failed to allocate frame during interrupt stack mapping!"),
-                            PageTableFlags::ACCESSED
-                                | PageTableFlags::WRITABLE
-                                | PageTableFlags::PRESENT,
+                            *KERNEL_PAGE_FLAGS,
                             allocator,
                         )
                         .expect("failed to map page during interrupt stack mapping!");
