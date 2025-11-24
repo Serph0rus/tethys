@@ -1,4 +1,7 @@
-use crate::{core::ProcessorData, frame::PAGE_FRAME_ALLOCATOR, mapping::physical_to_virtual_address};
+use crate::{
+    core::ProcessorData, frame::PAGE_FRAME_ALLOCATOR, sstacks::SyscallStack,
+    mapping::physical_to_virtual_address,
+};
 use alloc::{
     boxed::Box,
     collections::vec_deque::VecDeque,
@@ -7,9 +10,15 @@ use alloc::{
 };
 use core::sync::atomic::{AtomicU64, Ordering};
 use spinning_top::RwSpinlock;
-use x86_64::{PrivilegeLevel, VirtAddr, registers::rflags::RFlags, structures::{
-    gdt::SegmentSelector, idt::{InterruptStackFrame, InterruptStackFrameValue}, paging::{FrameAllocator, PageTable, PhysFrame}
-}};
+use x86_64::{
+    PrivilegeLevel, VirtAddr,
+    registers::rflags::RFlags,
+    structures::{
+        gdt::SegmentSelector,
+        idt::{InterruptStackFrame, InterruptStackFrameValue},
+        paging::{FrameAllocator, PageTable, PhysFrame},
+    },
+};
 struct Message {
     tag: u64,
     frames: Vec<PhysFrame>,
@@ -86,29 +95,8 @@ pub struct Thread {
     pub set_priority: u64,
     pub propagated_priority: u64,
     pub inherited_priority: u64,
-    pub kernel_stack: usize,
+    pub kernel_stack: SyscallStack,
     pub panic_vectors: PanicVectors,
-}
-impl Thread {
-    pub fn new(
-        general_registers: [u64; 16],
-        stack_pointer: usize,
-        interrupt_frame: x86_64::structures::idt::InterruptStackFrameValue,
-        set_priority: u64,
-        panic_vectors: PanicVectors,
-    ) -> Thread {
-        Thread {
-            general_registers,
-            stack_pointer,
-            interrupt_frame,
-            status: Status::Ready,
-            set_priority: set_priority,
-            propagated_priority: set_priority,
-            inherited_priority: set_priority,
-            kernel_stack: 0,
-            panic_vectors,
-        }
-    }
 }
 pub struct Process {
     pub set_priority: AtomicU64,
@@ -129,7 +117,15 @@ impl Process {
             set_priority: AtomicU64::new(0),
             propagated_priority: AtomicU64::new(0),
             parent: Some(Arc::downgrade(&self_arc)),
-            pages: RwSpinlock::new(physical_to_virtual_address(pfa_lock.as_mut().expect("page frame allocator not initialised before process creation!").allocate_frame().expect("no page frame could be allocated for new process's page table!").start_address().as_u64()) as *mut PageTable),
+            pages: RwSpinlock::new(physical_to_virtual_address(
+                pfa_lock
+                    .as_mut()
+                    .expect("page frame allocator not initialised before process creation!")
+                    .allocate_frame()
+                    .expect("no page frame could be allocated for new process's page table!")
+                    .start_address()
+                    .as_u64(),
+            ) as *mut PageTable),
             threads: RwSpinlock::new(Vec::new()),
             children: RwSpinlock::new(Vec::new()),
             messages: RwSpinlock::new(Vec::new()),
@@ -144,13 +140,36 @@ impl Process {
         let new_thread = Arc::new(RwSpinlock::new(Thread {
             general_registers: [0; 16],
             stack_pointer: 0,
-            interrupt_frame: InterruptStackFrameValue::new(VirtAddr::new(0), SegmentSelector::new(3, PrivilegeLevel::Ring3), RFlags::empty(), VirtAddr::new(0), SegmentSelector::new(4, PrivilegeLevel::Ring3)),
+            interrupt_frame: InterruptStackFrameValue::new(
+                VirtAddr::new(0),
+                SegmentSelector::new(3, PrivilegeLevel::Ring3),
+                RFlags::empty(),
+                VirtAddr::new(0),
+                SegmentSelector::new(4, PrivilegeLevel::Ring3),
+            ),
             status: Status::Ready,
             set_priority: 0,
             propagated_priority: 0,
             inherited_priority: 0,
-            kernel_stack: todo!(),
-            panic_vectors: todo!(),
+            kernel_stack: SyscallStack::new().expect("failed to allocate kernel stack during thread creation!"),
+            panic_vectors: PanicVectors {
+                emergency: 0,
+                divide: 0,
+                debug: 0,
+                breakpoint: 0,
+                overflow: 0,
+                bound: 0,
+                opcode: 0,
+                device: 0,
+                double_fault: 0,
+                stack: 0,
+                protection: 0,
+                page: 0,
+                floating_point: 0,
+                simd: 0,
+                control: 0,
+                security: 0,
+            },
         }));
         threads_write.push(new_thread.clone());
         new_thread
