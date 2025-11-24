@@ -28,6 +28,7 @@ system stacks
 context switching
 syscall testing
 basic round-robin scheduler
+check proc.rs for race conditions
 solidify tethys filesystem interface
 rewrite ABI.md
 kickstart process elf loader
