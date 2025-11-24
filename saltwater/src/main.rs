@@ -19,7 +19,7 @@ mod proc;
 mod kickstart;
 mod idt;
 mod core;
-mod kstacks;
+mod sstacks;
 use crate::hcf::hcf;
 const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 7] = [
     mapping::initialise,
