@@ -20,8 +20,9 @@ mod port;
 mod proc;
 mod qemu;
 mod sstacks;
+mod scheduler;
 use crate::hcf::hcf;
-const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 7] = [
+const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 8] = [
     mapping::initialise,
     allocator::bootstrap_initialise,
     acpi::bootstrap_initialise,
@@ -29,6 +30,7 @@ const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 7] = [
     istacks::initialise,
     gdt::initialise,
     idt::initialise,
+    kickstart::initialise,
 ];
 bootloader_api::entry_point!(main, config = &config::BOOTLOADER_CONFIG);
 pub fn main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
@@ -48,15 +50,12 @@ pub fn main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
         initialiser(boot_info);
     }
     println!(
-        "successfully initialised saltwater tethys kernel! exiting initialisation procedure into kickstart process..."
+        "successfully initialised saltwater tethys kernel! exiting initialisation procedure to scheduler & kickstart process..."
     );
-    //elf::file::parse_ident(data)
-    let gdt_selectors = gdt::GLOBAL_DESCRIPTOR_TABLES.lock().pop().unwrap();
-    unsafe { gdt::load(gdt_selectors.0, gdt_selectors.1) };
-    println!("loaded gdt for bootstrap processor...");
-
-    println!("successfully executed kickstart process!");
+    scheduler::enter();
+    println!("successfully executed tethys operating system!");
     qemu::exit(qemu::ExitCode::Success);
+    println!("exited qemu with success code...");
     match &mut boot_info.framebuffer {
         bootloader_api::info::Optional::Some(framebuffer) => framebuffer
             .buffer_mut()
@@ -66,5 +65,6 @@ pub fn main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
             .for_each(|x| *x = 255),
         bootloader_api::info::Optional::None => panic!("no framebuffer!"),
     }
+    println!("wrote success graphic to framebuffer...");
     hcf();
 }
