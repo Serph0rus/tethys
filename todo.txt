@@ -25,10 +25,13 @@ solidify syscall interface
 system stacks
 // complete ^^
 // to do \/ \/
-syscall stack deallocation
-context switching
+implement userspace-kernelspace separation for preemption in proc.rs
+thread-local storage
+switch into process
 syscall testing
+catch out of process
 basic round-robin scheduler
+syscall stack deallocation
 check proc.rs for race conditions
 solidify tethys filesystem interface
 rewrite ABI.md
@@ -61,3 +64,5 @@ switch to ring-3 unprivileged user processes
 calculate priorities of processes based on heirarchy
 implement lazy allocation for mapped pages
 implement copy-on-write for sent pages
+floating-point context switching
+pcid cache
