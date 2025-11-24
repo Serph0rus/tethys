@@ -61,6 +61,9 @@ pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
             .collect(),
     );
     println!("constructed bootstrap global descriptor table...");
+    let gdt_selectors = global_descriptor_tables.pop().expect("bootstrap processor could not find global descriptor table!");
+    unsafe { load(gdt_selectors.0, gdt_selectors.1) };
+    println!("loaded gdt for bootstrap processor...");
 }
 pub unsafe fn load(gdt: &'static GlobalDescriptorTable, selectors: Selectors) {
     unsafe {
