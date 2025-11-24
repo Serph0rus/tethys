@@ -11,29 +11,31 @@ mark bitmap as allocated
 page frame allocator
 qemu exit codes
 fix pfa bitmap
-system stacks
 split system stacks into interrupt stacks, per-process system stacks, and a bootstrap stack
 gdt structures for dynamic allocation
 custom bootstrap gdt
-solidify tethys filesystem interface
 paging structures & functions
-// complete ^^
-// to do \/ \/
-rewrite ABI.md
-boilerplate kickstart process
-kickstart process elf loader
-context switching
-syscall testing
 process control block
 track page mappings for each process
 track ownership of and page frame ownership for messages
+track ownership of processes by parent processes
 create filesystem servers
 track ownership of filesystem servers & messages
-traversal of filesystems in a tree by string
+solidify syscall interface
+// complete ^^
+// to do \/ \/
+system stacks
+context switching
+syscall testing
 basic round-robin scheduler
-track ownership of processes by parent processes
+solidify tethys filesystem interface
+rewrite ABI.md
+kickstart process elf loader
+boilerplate kickstart process
+traversal of filesystems in a tree by string
 create system-owned filesystem interface
 system-owned x86_64 port i/o filesystem
+userspace debugcon server
 ring 0 userspace hello world program
 system-owned process server
 single core round-robin scheduler
