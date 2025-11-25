@@ -23,9 +23,9 @@ create filesystem servers
 track ownership of filesystem servers & messages
 solidify syscall interface
 system stacks
+implement userspace-kernelspace separation for preemption in proc.rs
 // complete ^^
 // to do \/ \/
-implement userspace-kernelspace separation for preemption in proc.rs
 thread-local storage
 switch into process
 syscall testing
