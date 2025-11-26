@@ -103,25 +103,31 @@ pub fn initialise(boot_info: &mut bootloader_api::BootInfo) {
 }
 unsafe impl FrameAllocator<Size4KiB> for BitmapPageFrameAllocator {
     fn allocate_frame(&mut self) -> Option<PhysFrame> {
-        let mut found_index: Option<usize> = None;
         for frame_index in self.last_allocated_frame_index..self.total_frames {
             if self.bitmap[frame_index / 8] & (1 << (frame_index % 8)) == 0 {
-                found_index.insert(frame_index);
+                self.bitmap[frame_index / 8] |= 1 << (frame_index % 8);
+                self.last_allocated_frame_index = frame_index;
+                let frame_address = frame_index as u64 * PAGE_SIZE;
+                unsafe {
+                    (physical_to_virtual_address(frame_address) as *mut u8)
+                        .write_bytes(0, PAGE_SIZE as usize)
+                };
+                return Some(PhysFrame::containing_address(PhysAddr::new(frame_address)));
             }
         }
         for frame_index in 0..self.last_allocated_frame_index {
             if self.bitmap[frame_index / 8] & (1 << (frame_index % 8)) == 0 {
-                found_index.insert(frame_index);
+                self.bitmap[frame_index / 8] |= 1 << (frame_index % 8);
+                self.last_allocated_frame_index = frame_index;
+                let frame_address = frame_index as u64 * PAGE_SIZE;
+                unsafe {
+                    (physical_to_virtual_address(frame_address) as *mut u8)
+                        .write_bytes(0, PAGE_SIZE as usize)
+                };
+                return Some(PhysFrame::containing_address(PhysAddr::new(frame_address)));
             }
         }
-        let frame_index = found_index?;
-        self.bitmap[frame_index / 8] |= 1 << (frame_index % 8);
-        self.last_allocated_frame_index = frame_index;
-        let frame_address = frame_index as u64 * PAGE_SIZE;
-        unsafe {(frame_address as *mut u8).write_bytes(0, PAGE_SIZE as usize)};
-        Some(PhysFrame::containing_address(PhysAddr::new(
-            frame_address,
-        )))
+        None
     }
 }
 impl FrameDeallocator<Size4KiB> for BitmapPageFrameAllocator {

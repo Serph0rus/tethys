@@ -4,16 +4,15 @@ use crate::{
         INTERRUPT_STACK_SIZE, PAGE_SIZE, critical_stack_address, double_fault_stack_address,
         interrupt_stack_address,
     },
-    page::{get_current_pml4, get_offset_table},
+    page::{KERNEL_PAGE_FLAGS, get_current_pml4, get_offset_table},
     println,
 };
-use lazy_static::lazy_static;
 use x86_64::{
     VirtAddr,
-    structures::paging::{FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB},
+    structures::paging::{FrameAllocator, Mapper, Page, Size4KiB},
 };
 pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
-    let mut table = get_offset_table(unsafe { &mut *get_current_pml4() });
+    let mut table = get_offset_table(unsafe { &mut *get_current_pml4()});
     println!("constructed offset page table mapper...");
     let mut allocator_guard = PAGE_FRAME_ALLOCATOR.lock();
     let allocator = allocator_guard

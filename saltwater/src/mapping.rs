@@ -29,7 +29,7 @@ pub const fn double_fault_stack_address(index: usize) -> u64 {
 pub const fn critical_stack_address(index: usize) -> u64 {
     CRITICAL_STACKS + INTERRUPT_STACK_SIZE * index as u64
 }
-pub const fn physical_to_virtual_address(physical: u64) -> u64 {
+pub fn physical_to_virtual_address(physical: u64) -> u64 {
     DIRECT_PHYSICAL + physical
 }
 pub fn initialise(boot_info: &mut bootloader_api::BootInfo) {

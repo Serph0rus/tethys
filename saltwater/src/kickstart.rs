@@ -9,7 +9,7 @@ const KICKSTART_BYTES: &[u8] = if cfg!(debug_assertions) {
 } else {
     include_bytes!("../../target/x86_64-unknown-none/release/kickstart")
 };
-pub static mut KICKSTART_PAGE_TABLE: PageTable = PageTable::new();
+pub static mut KICKSTART_PAGE_TABLE: RwSpinlock<PageTable> = RwSpinlock::new(PageTable::new());
 pub static mut KICKSTART_ARC: RwSpinlock<Option<Arc<Process>>> = RwSpinlock::new(None);
 pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
     println!("loading kickstart process from embedded elf...");
@@ -21,7 +21,7 @@ pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
     if elf_bytes.ehdr.class != elf::file::Class::ELF64 {
         println!("incorrect kickstart elf class! expected ELF64, received: ELF32!");
     }
-    let kickstart_proc = Arc::new(Process {
+    /*let kickstart_proc = Arc::new(Process {
             set_priority: AtomicU64::new(u64::MAX),
             propagated_priority: u64::MAX,
             parent: None,
@@ -33,5 +33,5 @@ pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
             servers: RwSpinlock::new(Vec::new()),
             descriptors: RwSpinlock::new(Vec::new()),
     });
-    let thread_arc = kickstart_proc.add_thread();
+    let thread_arc = kickstart_proc.add_thread();*/
 }

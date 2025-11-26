@@ -1,6 +1,7 @@
 use bootloader_api::BootInfo;
-use x86_64::{PhysAddr, VirtAddr, registers::control::Cr3, structures::paging::{PageTable, PhysFrame}};
+use x86_64::{PhysAddr, VirtAddr, registers::control::Cr3, structures::paging::{OffsetPageTable, PageTable, PageTableFlags, PhysFrame}};
 use crate::{mapping::{self, physical_to_virtual_address}};
+use lazy_static::lazy_static;
 #[repr(C, packed)]
 struct Entry(u64);
 const ENTRY_PRESENT: u64 = 0;
@@ -13,6 +14,12 @@ const ENTRY_DIRTY: u64 = 6;
 const ENTRY_HUGE_PAGE: u64 = 7;
 const ENTRY_GLOBAL: u64 = 8;
 const ENTRY_NO_EXECUTE: u64 = 63;
+lazy_static! {
+    pub static ref KERNEL_PAGE_FLAGS: PageTableFlags =
+          PageTableFlags::ACCESSED
+        | PageTableFlags::WRITABLE
+        | PageTableFlags::PRESENT;
+}
 impl Entry {
     pub fn new(
         present: bool,
@@ -76,12 +83,15 @@ impl Entry {
     }
 }
 pub fn get_current_pml4<'a>() -> *mut PageTable {
-    unsafe {&mut *(physical_to_virtual_address(Cr3::read().0.start_address().as_u64()) as *mut PageTable)}.;
+    physical_to_virtual_address(Cr3::read().0.start_address().as_u64()) as *mut PageTable
+}
+pub fn get_offset_table<'a>(table: &'a mut PageTable) -> OffsetPageTable<'a> {
+    unsafe {OffsetPageTable::new(table, x86_64::VirtAddr::new(mapping::DIRECT_PHYSICAL))}
 }
 struct ManagedPageTable {
 }
 impl ManagedPageTable {
-    fn map_kernel(self: &mut Self, from: PhysFrame, to: VirtAddr) {
+    fn map_to(self: &mut Self, from: PhysFrame, to: VirtAddr) {
     }
     fn flush(self: &mut Self) {
 

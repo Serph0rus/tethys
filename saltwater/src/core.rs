@@ -11,8 +11,8 @@ pub struct ProcessorData {
     pub gdt: &'static GlobalDescriptorTable,
     pub selectors: Selectors,
     pub ready_queue: VecDeque<Arc<RwSpinlock<Thread>>>,
-    pub current_process: Weak<Process>,
-    pub current_thread: Arc<Thread>,
+    pub current_process: RwSpinlock<Option<Weak<Process>>>,
+    pub current_thread: RwSpinlock<Option<Arc<RwSpinlock<Thread>>>>,
 }
 pub static PROCESSOR_DATA_VEC: RwSpinlock<Vec<&'static mut RwSpinlock<ProcessorData>>> =
     RwSpinlock::new(Vec::new());
@@ -28,6 +28,8 @@ pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
                     gdt: gdt_selectors.0,
                     selectors: gdt_selectors.1,
                     ready_queue: VecDeque::new(),
+                    current_process: RwSpinlock::new(None),
+                    current_thread: RwSpinlock::new(None),
                 })))
             })
             .collect::<Vec<&'static mut RwSpinlock<ProcessorData>>>(),

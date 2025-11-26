@@ -1,5 +1,5 @@
 use crate::{
-    frame::PAGE_FRAME_ALLOCATOR, istacks, mapping::{PAGE_SIZE, SYSCALL_STACK_SIZE, syscall_stack_address}, page::{get_current_pml4, get_offset_table}
+    frame::PAGE_FRAME_ALLOCATOR, istacks, mapping::{PAGE_SIZE, SYSCALL_STACK_SIZE, syscall_stack_address}, page::{KERNEL_PAGE_FLAGS, get_current_pml4, get_offset_table}
 };
 use alloc::vec::Vec;
 use spinning_top::RwSpinlock;
@@ -28,7 +28,7 @@ impl SyscallStack {
         for page in (0..(SYSCALL_STACK_SIZE / PAGE_SIZE)).map(|page_index| Page::<Size4KiB>::containing_address(VirtAddr::new(syscall_stack_address(stack_index) + page_index))) {
             let mut pfa_lock = PAGE_FRAME_ALLOCATOR.lock();
             let pfa = pfa_lock.as_mut().expect("page frame allocator not initialised before allocation of syscall stack!");
-            unsafe {table.map_to(page, pfa.allocate_frame()?, *istacks::KERNEL_PAGE_FLAGS, pfa)}.ok()?.flush();
+            unsafe {table.map_to(page, pfa.allocate_frame()?, *KERNEL_PAGE_FLAGS, pfa)}.ok()?.flush();
         }
         Some(SyscallStack(stack_index))
     }
