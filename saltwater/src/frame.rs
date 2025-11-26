@@ -118,8 +118,10 @@ unsafe impl FrameAllocator<Size4KiB> for BitmapPageFrameAllocator {
         self.bitmap[frame_index / 8] |= 1 << (frame_index % 8);
         self.last_allocated_frame_index = frame_index;
         let frame_address = frame_index as u64 * PAGE_SIZE;
-        unsafe { (frame_address as *mut u8).write_bytes(0, PAGE_SIZE as usize) };
-        Some(PhysFrame::containing_address(PhysAddr::new(frame_address)))
+        unsafe {(frame_address as *mut u8).write_bytes(0, PAGE_SIZE as usize)};
+        Some(PhysFrame::containing_address(PhysAddr::new(
+            frame_address,
+        )))
     }
 }
 impl FrameDeallocator<Size4KiB> for BitmapPageFrameAllocator {

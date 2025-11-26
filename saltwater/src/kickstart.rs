@@ -1,4 +1,4 @@
-use core::sync::atomic::AtomicU64;
+use core::{sync::atomic::AtomicU64, u64};
 use alloc::{collections::vec_deque::VecDeque, sync::Arc, vec::{self, Vec}};
 use elf::{ElfBytes, endian::AnyEndian};
 use spinning_top::RwSpinlock;
@@ -10,7 +10,7 @@ const KICKSTART_BYTES: &[u8] = if cfg!(debug_assertions) {
     include_bytes!("../../target/x86_64-unknown-none/release/kickstart")
 };
 pub static mut KICKSTART_PAGE_TABLE: PageTable = PageTable::new();
-pub static mut KICKSTART_ARC: Option<Arc<Process>> = None;
+pub static mut KICKSTART_ARC: RwSpinlock<Option<Arc<Process>>> = RwSpinlock::new(None);
 pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
     println!("loading kickstart process from embedded elf...");
     let elf_bytes = ElfBytes::<AnyEndian>::minimal_parse(KICKSTART_BYTES)
@@ -22,8 +22,8 @@ pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
         println!("incorrect kickstart elf class! expected ELF64, received: ELF32!");
     }
     let kickstart_proc = Arc::new(Process {
-            set_priority: AtomicU64::new(0),
-            propagated_priority: AtomicU64::new(0),
+            set_priority: AtomicU64::new(u64::MAX),
+            propagated_priority: u64::MAX,
             parent: None,
             pages: RwSpinlock::new(unsafe {&mut KICKSTART_PAGE_TABLE as *mut PageTable}),
             threads: RwSpinlock::new(Vec::new()),
@@ -33,6 +33,5 @@ pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
             servers: RwSpinlock::new(Vec::new()),
             descriptors: RwSpinlock::new(Vec::new()),
     });
-    let thread = kickstart_proc.add_thread().write();
-    thread.
+    let thread_arc = kickstart_proc.add_thread();
 }

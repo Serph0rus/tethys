@@ -26,6 +26,7 @@ system stacks
 implement userspace-kernelspace separation for preemption in proc.rs
 // complete ^^
 // to do \/ \/
+managed page tables for processes
 thread-local storage
 switch into process
 syscall testing

@@ -1,5 +1,6 @@
-use x86_64::{registers::control::Cr3, structures::paging::{OffsetPageTable, PageTable}};
-use crate::mapping::{self, physical_to_virtual_address};
+use bootloader_api::BootInfo;
+use x86_64::{PhysAddr, VirtAddr, registers::control::Cr3, structures::paging::{PageTable, PhysFrame}};
+use crate::{mapping::{self, physical_to_virtual_address}};
 #[repr(C, packed)]
 struct Entry(u64);
 const ENTRY_PRESENT: u64 = 0;
@@ -24,7 +25,7 @@ impl Entry {
         huge_page: bool,
         global: bool,
         no_execute: bool,
-        frame_index: usize,
+        frame_address: PhysAddr,
     ) -> Entry {
         Self(
             ((present as u64) << ENTRY_PRESENT)
@@ -37,10 +38,13 @@ impl Entry {
                 | ((huge_page as u64) << ENTRY_HUGE_PAGE)
                 | ((global as u64) << ENTRY_GLOBAL)
                 | ((no_execute as u64) << ENTRY_NO_EXECUTE)
-                | ((frame_index << 12) & 0x000f_ffff_ffff_f000) as u64,
+                | (frame_address.as_u64() & 0x000f_ffff_ffff_f000) as u64,
         )
     }
-    pub fn default_kernel(frame_index: usize) -> Entry {
+    fn empty() -> Entry {
+        Entry(0)
+    }
+    fn default_kernel(frame_address: PhysAddr) -> Entry {
         Entry::new(
             true,
             true,
@@ -50,12 +54,12 @@ impl Entry {
             false,
             false,
             false,
+            true,
             false,
-            false,
-            frame_index,
+            frame_address,
         )
     }
-    pub fn default_user(frame_index: usize) -> Entry {
+    fn default_user(frame_address: PhysAddr) -> Entry {
         Entry::new(
             true,
             true,
@@ -67,13 +71,22 @@ impl Entry {
             false,
             false,
             false,
-            frame_index,
+            frame_address,
         )
     }
 }
 pub fn get_current_pml4<'a>() -> *mut PageTable {
-    physical_to_virtual_address(Cr3::read().0.start_address().as_u64()) as *mut PageTable
+    unsafe {&mut *(physical_to_virtual_address(Cr3::read().0.start_address().as_u64()) as *mut PageTable)}.;
 }
-pub fn get_offset_table<'a>(table: &'a mut PageTable) -> OffsetPageTable<'a> {
-    unsafe {OffsetPageTable::new(table, x86_64::VirtAddr::new(mapping::DIRECT_PHYSICAL))}
+struct ManagedPageTable {
+}
+impl ManagedPageTable {
+    fn map_kernel(self: &mut Self, from: PhysFrame, to: VirtAddr) {
+    }
+    fn flush(self: &mut Self) {
+
+    }
+}
+pub fn initialise(_boot_info: &mut BootInfo) {
+    
 }

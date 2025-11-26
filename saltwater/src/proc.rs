@@ -1,6 +1,6 @@
 use crate::{
-    core::ProcessorData, frame::PAGE_FRAME_ALLOCATOR, sstacks::SyscallStack,
-    mapping::physical_to_virtual_address,
+    frame::PAGE_FRAME_ALLOCATOR, mapping::physical_to_virtual_address,
+    sstacks::SyscallStack,
 };
 use alloc::{
     boxed::Box,
@@ -10,15 +10,11 @@ use alloc::{
 };
 use core::sync::atomic::AtomicU64;
 use spinning_top::RwSpinlock;
-use x86_64::{
-    PrivilegeLevel, VirtAddr,
-    registers::rflags::RFlags,
-    structures::{
-        gdt::SegmentSelector,
-        idt::InterruptStackFrameValue,
-        paging::{FrameAllocator, PageTable, PhysFrame},
-    },
-};
+use x86_64::
+    structures::
+        paging::{FrameAllocator, PageTable, PhysFrame}
+    
+;
 enum MessageStatus {
     Sent(Vec<PhysFrame>),
     Received,
@@ -27,6 +23,7 @@ enum MessageStatus {
 struct Message {
     tag: u64,
     status: RwSpinlock<MessageStatus>,
+    waiting: RwSpinlock<Vec<Arc<RwSpinlock<Thread>>>>,
 }
 struct State {
     walk: bool,
@@ -51,32 +48,20 @@ struct Binding {
     state_mask: State,
 }
 struct Server {
-    bindings: RwSpinlock<Vec<Box<[u8]>>>,
+    bindings: RwSpinlock<Vec<Binding>>,
     kind: ServerKind,
 }
 enum ServerKind {
-    User(UserServer),
+    User(Arc<RwSpinlock<UserServer>>),
     Kernel(KernelServer),
 }
 struct UserServer {
+    priority_sum: RwSpinlock<u64>,
     requests: RwSpinlock<VecDeque<Arc<Message>>>,
     working: RwSpinlock<Vec<Arc<Message>>>,
-    priority_sum: Option<RwSpinlock<usize>>,
+    waiting: RwSpinlock<Vec<Arc<RwSpinlock<Thread>>>>,
 }
-struct KernelServer {
-}
-enum Status {
-    Ready,
-    Aborted,
-    Executing(Weak<ProcessorData>),
-    AwaitingRequest(Weak<Server>),
-    AwaitingResponse(Weak<Message>),
-}
-struct PageMapping {
-    physical_start: usize,
-    virtual_start: usize,
-    count: usize,
-}
+struct KernelServer {}
 pub struct Descriptor {
     server: Weak<Server>,
     path: Box<[u8]>,
@@ -100,28 +85,31 @@ pub struct PanicVectors {
     control: u64,
     security: u64,
 }
-#[repr(C, align(16))]
+pub struct ExecutionContext {
+    pub registers: [u64; 16],
+    pub instruction_pointer: u64,
+    pub rflags: u64,
+    pub debug: [u64; 8],
+}
 pub struct Thread {
-    pub general_registers: [u64; 16],
-    pub stack_pointer: usize,
-    pub interrupt_frame: InterruptStackFrameValue,
-    pub status: Status,
+    pub user_context: ExecutionContext,
+    pub handler_context: ExecutionContext,
+    pub aborted: bool,
     pub set_priority: u64,
     pub propagated_priority: u64,
     pub inherited_priority: u64,
     pub kernel_stack: SyscallStack,
     pub panic_vectors: PanicVectors,
     pub fs_base: u64,
-    pub gs_base: u64,
 }
 pub struct Process {
     pub set_priority: AtomicU64,
-    pub propagated_priority: AtomicU64,
+    pub propagated_priority: u64,
     pub parent: Option<Weak<Process>>,
     pub pages: RwSpinlock<*mut PageTable>,
     pub threads: RwSpinlock<Vec<Arc<RwSpinlock<Thread>>>>,
     pub children: RwSpinlock<Vec<Arc<Process>>>,
-    pub requests: RwSpinlock<Vec<Weak<Message>>>,
+    pub requests: RwSpinlock<Vec<(u64, Weak<Message>)>>,
     pub responses: RwSpinlock<VecDeque<Arc<Message>>>,
     pub servers: RwSpinlock<Vec<Arc<Server>>>,
     pub descriptors: RwSpinlock<Vec<Descriptor>>,
@@ -132,7 +120,7 @@ impl Process {
         let mut pfa_lock = PAGE_FRAME_ALLOCATOR.lock();
         let new_process = Arc::new(Self {
             set_priority: AtomicU64::new(0),
-            propagated_priority: AtomicU64::new(0),
+            propagated_priority: 0,
             parent: Some(Arc::downgrade(&self_arc)),
             pages: RwSpinlock::new(physical_to_virtual_address(
                 pfa_lock
@@ -153,23 +141,27 @@ impl Process {
         children_write.push(new_process.clone());
         new_process
     }
-    pub fn add_thread(self_arc: Arc<Self>) -> Arc<RwSpinlock<Thread>> {
-        let mut threads_write = self_arc.threads.write();
+    pub fn add_thread(self: &Self) -> Arc<RwSpinlock<Thread>> {
+        let mut threads_write = self.threads.write();
         let new_thread = Arc::new(RwSpinlock::new(Thread {
-            general_registers: [0; 16],
-            stack_pointer: 0,
-            interrupt_frame: InterruptStackFrameValue::new(
-                VirtAddr::new(0),
-                SegmentSelector::new(3, PrivilegeLevel::Ring3),
-                RFlags::empty(),
-                VirtAddr::new(0),
-                SegmentSelector::new(4, PrivilegeLevel::Ring3),
-            ),
-            status: Status::Ready,
+            user_context: ExecutionContext {
+                registers: [0; 16],
+                instruction_pointer: 0,
+                rflags: 0,
+                debug: [0; 8],
+            },
+            handler_context: ExecutionContext {
+                registers: [0; 16],
+                instruction_pointer: 0,
+                rflags: 0,
+                debug: [0; 8],
+            },
+            aborted: true,
             set_priority: 0,
             propagated_priority: 0,
             inherited_priority: 0,
-            kernel_stack: SyscallStack::new().expect("failed to allocate kernel stack during thread creation!"),
+            kernel_stack: SyscallStack::new()
+                .expect("failed to allocate kernel stack during thread creation!"),
             panic_vectors: PanicVectors {
                 emergency: 0,
                 divide: 0,
@@ -189,9 +181,44 @@ impl Process {
                 security: 0,
             },
             fs_base: 0,
-            gs_base: 0,
         }));
         threads_write.push(new_thread.clone());
         new_thread
     }
+    /*fn propagate_priorities(self: &Self) {
+        let set_priority_sum = unsafe { self.threads.read() }
+            .iter()
+            .map(|thread| unsafe { thread.read() }.set_priority as u128)
+            .chain(
+                unsafe { self.children.read() }
+                    .iter()
+                    .map(|child| child.set_priority.load(Ordering::Relaxed) as u128),
+            )
+            .sum::<u128>();
+        for (set_priority, propagated_priority) in
+            unsafe { self.threads.read() }
+                .iter()
+                .map(|thread| {
+                    (
+                        unsafe { thread.read() }.set_priority,
+                        &mut unsafe { thread.make_write_guard_unchecked() }.propagated_priority,
+                    )
+                })
+                .chain(
+                    unsafe { self.children.make_write_guard_unchecked() }
+                        .iter()
+                        .map(|child| {
+                            (
+                                child.set_priority.load(Ordering::Relaxed),
+                                &mut child.propagated_priority,
+                            )
+                        }),
+                )
+        {
+            *propagated_priority = ((set_priority as u128 / set_priority_sum)
+                * self.propagated_priority as u128) as u64
+        }
+    }*/
 }
+unsafe impl Send for Process {}
+unsafe impl Sync for Process {}

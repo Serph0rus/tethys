@@ -2,35 +2,39 @@
 #![no_main]
 #![feature(abi_x86_interrupt)]
 pub extern crate alloc;
-mod acpi;
-mod allocator;
-mod config;
-mod core;
-mod debugcon;
-mod frame;
-mod gdt;
-mod hcf;
-mod idt;
-mod istacks;
-mod kickstart;
-mod mapping;
-mod page;
-mod panic;
-mod port;
-mod proc;
-mod qemu;
-mod sstacks;
-mod scheduler;
+pub mod acpi;
+pub mod allocator;
+pub mod config;
+pub mod core;
+pub mod debugcon;
+pub mod frame;
+pub mod gdt;
+pub mod hcf;
+pub mod idt;
+pub mod istacks;
+pub mod kickstart;
+pub mod mapping;
+pub mod page;
+pub mod panic;
+pub mod port;
+pub mod proc;
+pub mod qemu;
+pub mod sstacks;
+pub mod short_sched;
+pub mod long_sched;
+pub mod switch;
 use crate::hcf::hcf;
-const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 8] = [
+const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 10] = [
     mapping::initialise,
     allocator::bootstrap_initialise,
     acpi::bootstrap_initialise,
     frame::initialise,
     istacks::initialise,
-    gdt::initialise,
+    core::initialise,
     idt::initialise,
+    page::initialise,
     kickstart::initialise,
+    long_sched::initialise,
 ];
 bootloader_api::entry_point!(main, config = &config::BOOTLOADER_CONFIG);
 pub fn main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
@@ -52,7 +56,7 @@ pub fn main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     println!(
         "successfully initialised saltwater tethys kernel! exiting initialisation procedure to scheduler & kickstart process..."
     );
-    scheduler::enter();
+    short_sched::enter();
     println!("successfully executed tethys operating system!");
     qemu::exit(qemu::ExitCode::Success);
     println!("exited qemu with success code...");

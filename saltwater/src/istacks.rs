@@ -12,11 +12,6 @@ use x86_64::{
     VirtAddr,
     structures::paging::{FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB},
 };
-lazy_static! {
-    pub static ref KERNEL_PAGE_FLAGS: PageTableFlags = PageTableFlags::ACCESSED
-                                | PageTableFlags::WRITABLE
-                                | PageTableFlags::PRESENT;
-}
 pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
     let mut table = get_offset_table(unsafe { &mut *get_current_pml4() });
     println!("constructed offset page table mapper...");
