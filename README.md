@@ -11,7 +11,7 @@ the following are required:
 - a nightly cargo toolchain (**$ rustup toolchain install nightly**)
 - x86_64-unknown-none cargo target (**$ rustup target add x86_64-unknown-none**)
 - qemu-system-x86_64 (could also be listed in some package managers as part of qemu-full)
-- llvm-tools-preview (**$ rustup component add llvm-tools-preview**)
+- rustup components "llvm-tools-preview" (**$ rustup component add llvm-tools-preview**) and "rust-src" (**$ rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu**)
 
 otherwise, the project has been configured to run with simply **$ cargo build** or **$ cargo run**
 
