@@ -21,7 +21,6 @@ pub mod proc;
 pub mod qemu;
 pub mod sstacks;
 pub mod scheduler;
-pub mod switch;
 use crate::hcf::hcf;
 const INITIALISERS: [fn(&mut bootloader_api::BootInfo); 8] = [
     mapping::initialise,
@@ -53,7 +52,7 @@ pub fn main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     println!(
         "successfully initialised saltwater tethys kernel! exiting initialisation procedure to scheduler & kickstart process..."
     );
-    scheduler::enter();
+    // scheduler::enter();
     println!("successfully executed tethys operating system!");
     qemu::exit(qemu::ExitCode::Success);
     println!("exited qemu with success code...");

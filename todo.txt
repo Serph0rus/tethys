@@ -28,42 +28,39 @@ managed page tables for processes
 // complete ^^
 // to do \/ \/
 thread-local storage
+kickstart process elf loader
+boilerplate kickstart process
 switch into process
 syscall testing
 catch out of process
-basic round-robin scheduler
+apic commands
+single core round-robin scheduler
+modify managed page tables for multicore tlb shootdowns
 syscall stack deallocation
-check proc.rs for race conditions
 solidify tethys filesystem interface
 rewrite ABI.md
-kickstart process elf loader
-boilerplate kickstart process
 traversal of filesystems in a tree by string
 create system-owned filesystem interface
 system-owned x86_64 port i/o filesystem
 userspace debugcon server
-ring 0 userspace hello world program
+userspace hello world program
 system-owned process server
-single core round-robin scheduler
-release control from boot process to scheduler
+set of default mounts into kickstart namespace
 userspace elf loader
 system-owned irq filesystem
+ps2 keyboard server
 atapio driver
 fat32 driver
-ps2 keyboard server
-ps2 mouse server
 framebuffer server
 console server
 shell
+ps2 mouse server
 framebuffer + mouse + keyboard multiplexer
-split kernel allocator into multicore-safe allocators
-move to fixed-priority multicore-safe scheduler
-real gdt
+multicore schedulers
 ap trampoline
 initialise all other processors to scheduler
-switch to ring-3 unprivileged user processes
 calculate priorities of processes based on heirarchy
-implement lazy allocation for mapped pages
-implement copy-on-write for sent pages
+lazy allocation for mapped pages
+copy-on-write for sent pages
 floating-point context switching
-pcid cache
+8-pcid cache

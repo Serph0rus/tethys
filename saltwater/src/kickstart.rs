@@ -15,8 +15,8 @@ pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
     println!("loading kickstart process from embedded elf...");
     let elf_bytes = ElfBytes::<AnyEndian>::minimal_parse(KICKSTART_BYTES)
         .unwrap_or_else(|error| panic!("failed to parse kickstart elf:\n{}", error));
-    if elf_bytes.ehdr.abiversion != 1 {
-        println!("incorrect kickstart elf abi version! expected 0x1, recieved: 0x{:x}!", elf_bytes.ehdr.abiversion);
+    if elf_bytes.ehdr.abiversion != 0 {
+        println!("incorrect kickstart elf abi version! expected 0x0, recieved: 0x{:x}!", elf_bytes.ehdr.abiversion);
     }
     if elf_bytes.ehdr.class != elf::file::Class::ELF64 {
         println!("incorrect kickstart elf class! expected ELF64, received: ELF32!");

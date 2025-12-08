@@ -2,17 +2,14 @@ use crate::{
     acpi::PROCESSOR_COUNT,
     gdt::{self, Selectors},
     println,
-    proc::{Process, Thread},
+    proc::{Process, Thread}, scheduler::ProcessorScheduler,
 };
-use alloc::{boxed::Box, collections::vec_deque::VecDeque, sync::{Arc, Weak}, vec::Vec};
+use alloc::{boxed::Box, collections::{binary_heap::BinaryHeap, vec_deque::VecDeque}, sync::{Arc, Weak}, vec::Vec};
 use spinning_top::RwSpinlock;
 use x86_64::structures::gdt::GlobalDescriptorTable;
 pub struct ProcessorData {
-    pub gdt: &'static GlobalDescriptorTable,
-    pub selectors: Selectors,
-    pub ready_queue: VecDeque<Arc<RwSpinlock<Thread>>>,
-    pub current_process: RwSpinlock<Option<Weak<Process>>>,
-    pub current_thread: RwSpinlock<Option<Arc<RwSpinlock<Thread>>>>,
+    pub gdt_selectors: (&'static GlobalDescriptorTable, Selectors),
+    pub scheduler: ProcessorScheduler,
 }
 pub static PROCESSOR_DATA_VEC: RwSpinlock<Vec<&'static mut RwSpinlock<ProcessorData>>> =
     RwSpinlock::new(Vec::new());
@@ -25,11 +22,8 @@ pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
             .map(|index| {
                 let gdt_selectors = gdt::new(index);
                 Box::leak(Box::new(RwSpinlock::new(ProcessorData {
-                    gdt: gdt_selectors.0,
-                    selectors: gdt_selectors.1,
-                    ready_queue: VecDeque::new(),
-                    current_process: RwSpinlock::new(None),
-                    current_thread: RwSpinlock::new(None),
+                    gdt_selectors: gdt_selectors,
+                    scheduler: ProcessorScheduler::new(),
                 })))
             })
             .collect::<Vec<&'static mut RwSpinlock<ProcessorData>>>(),
@@ -39,5 +33,5 @@ pub fn initialise(_boot_info: &mut bootloader_api::BootInfo) {
         processor_data.len()
     );
     let bootstrap_data = processor_data.get(0).expect("bootstrap processor could not find processor data!").read();
-    unsafe {gdt::load(&bootstrap_data.gdt, bootstrap_data.selectors.clone())};
+    unsafe {gdt::load(&bootstrap_data.gdt_selectors)};
 }

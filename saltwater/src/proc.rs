@@ -97,13 +97,14 @@ pub struct Thread {
     pub aborted: bool,
     pub set_priority: u64,
     pub propagated_priority: u64,
-    pub inherited_priority: u64,
     pub kernel_stack: SyscallStack,
     pub panic_vectors: PanicVectors,
+    pub virtual_time: isize,
 }
 pub struct Process {
     pub set_priority: AtomicU64,
-    pub propagated_priority: u64,
+    pub propagated_priority: AtomicU64,
+    pub inherited_priority: AtomicU64,
     pub parent: Option<Weak<Process>>,
     pub pages: RwSpinlock<ManagedPageTable>,
     pub threads: RwSpinlock<Vec<Arc<RwSpinlock<Thread>>>>,
@@ -118,7 +119,8 @@ impl Process {
         let mut children_write = self_arc.children.write();
         let new_process = Arc::new(Self {
             set_priority: AtomicU64::new(0),
-            propagated_priority: 0,
+            propagated_priority: AtomicU64::new(0),
+            inherited_priority: AtomicU64::new(0),
             parent: Some(Arc::downgrade(&self_arc)),
             pages: RwSpinlock::new(ManagedPageTable::new()),
             threads: RwSpinlock::new(Vec::new()),
@@ -151,7 +153,6 @@ impl Process {
             aborted: true,
             set_priority: 0,
             propagated_priority: 0,
-            inherited_priority: 0,
             kernel_stack: SyscallStack::new()
                 .expect("failed to allocate kernel stack during thread creation!"),
             panic_vectors: PanicVectors {
@@ -172,6 +173,7 @@ impl Process {
                 control: 0,
                 security: 0,
             },
+            virtual_time: 0,
         }));
         threads_write.push(new_thread.clone());
         new_thread

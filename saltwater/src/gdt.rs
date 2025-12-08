@@ -37,15 +37,15 @@ pub fn new(processor: usize) -> (&'static GlobalDescriptorTable, Selectors) {
     };
     (Box::leak(Box::new(gdt)), selectors)
 }
-pub unsafe fn load(gdt: &'static GlobalDescriptorTable, selectors: Selectors) {
+pub unsafe fn load(gdt_selectors: &(&'static GlobalDescriptorTable, Selectors)) {
     unsafe {
-        gdt.load();
-        segmentation::CS::set_reg(selectors.kernel_code);
-        segmentation::DS::set_reg(selectors.kernel_data);
-        segmentation::ES::set_reg(selectors.kernel_data);
-        segmentation::FS::set_reg(selectors.kernel_data);
-        segmentation::GS::set_reg(selectors.kernel_data);
-        segmentation::SS::set_reg(selectors.kernel_data);
-        load_tss(selectors.task_state);
+        gdt_selectors.0.load();
+        segmentation::CS::set_reg(gdt_selectors.1.kernel_code);
+        segmentation::DS::set_reg(gdt_selectors.1.kernel_data);
+        segmentation::ES::set_reg(gdt_selectors.1.kernel_data);
+        segmentation::FS::set_reg(gdt_selectors.1.kernel_data);
+        segmentation::GS::set_reg(gdt_selectors.1.kernel_data);
+        segmentation::SS::set_reg(gdt_selectors.1.kernel_data);
+        load_tss(gdt_selectors.1.task_state);
     };
 }

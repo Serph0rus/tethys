@@ -8,7 +8,7 @@ pub const DOUBLE_FAULT_IST_INDEX: usize = 2;
 pub const CRITICAL_IST_INDEX: usize = 3;
 static IDT_OPTION: Spinlock<Option<InterruptDescriptorTable>> = Spinlock::new(Some(InterruptDescriptorTable::new()));
 static IDT_STATIC: Spinlock<Option<&'static InterruptDescriptorTable>> = Spinlock::new(None);
-fn general_handler(stack_frame: InterruptStackFrame, index: u8, error_code: Option<u64>) {
+fn general_handler(_stack_frame: InterruptStackFrame, index: u8, _error_code: Option<u64>) {
     println!("interrupt 0x{:x} triggered!", index);
     hcf();
 }
