@@ -1,6 +1,5 @@
 use crate::{
-    frame::PAGE_FRAME_ALLOCATOR, mapping::physical_to_virtual_address,
-    sstacks::SyscallStack,
+    frame::PAGE_FRAME_ALLOCATOR, mapping::physical_to_virtual_address, page::ManagedPageTable, sstacks::SyscallStack
 };
 use alloc::{
     boxed::Box,
@@ -106,7 +105,7 @@ pub struct Process {
     pub set_priority: AtomicU64,
     pub propagated_priority: u64,
     pub parent: Option<Weak<Process>>,
-    pub pages: RwSpinlock<*mut PageTable>,
+    pub pages: RwSpinlock<ManagedPageTable>,
     pub threads: RwSpinlock<Vec<Arc<RwSpinlock<Thread>>>>,
     pub children: RwSpinlock<Vec<Arc<Process>>>,
     pub requests: RwSpinlock<Vec<(u64, Weak<Message>)>>,
@@ -117,20 +116,11 @@ pub struct Process {
 impl Process {
     pub fn add_child(self_arc: Arc<Self>) -> Arc<Self> {
         let mut children_write = self_arc.children.write();
-        let mut pfa_lock = PAGE_FRAME_ALLOCATOR.lock();
         let new_process = Arc::new(Self {
             set_priority: AtomicU64::new(0),
             propagated_priority: 0,
             parent: Some(Arc::downgrade(&self_arc)),
-            pages: RwSpinlock::new(physical_to_virtual_address(
-                pfa_lock
-                    .as_mut()
-                    .expect("page frame allocator not initialised before process creation!")
-                    .allocate_frame()
-                    .expect("no page frame could be allocated for new process's page table!")
-                    .start_address()
-                    .as_u64(),
-            ) as *mut PageTable),
+            pages: RwSpinlock::new(ManagedPageTable::new()),
             threads: RwSpinlock::new(Vec::new()),
             children: RwSpinlock::new(Vec::new()),
             requests: RwSpinlock::new(Vec::new()),
@@ -221,5 +211,3 @@ impl Process {
         }
     }*/
 }
-unsafe impl Send for Process {}
-unsafe impl Sync for Process {}

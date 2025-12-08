@@ -1,102 +1,93 @@
-use bootloader_api::BootInfo;
-use x86_64::{PhysAddr, VirtAddr, registers::control::Cr3, structures::paging::{OffsetPageTable, PageTable, PageTableFlags, PhysFrame}};
-use crate::{mapping::{self, physical_to_virtual_address}};
+use crate::{
+    frame::PAGE_FRAME_ALLOCATOR,
+    mapping::{self, physical_to_virtual_address},
+};
 use lazy_static::lazy_static;
-#[repr(C, packed)]
-struct Entry(u64);
-const ENTRY_PRESENT: u64 = 0;
-const ENTRY_WRITABLE: u64 = 1;
-const ENTRY_USER_ACCESSIBLE: u64 = 2;
-const ENTRY_WRITE_THROUGH: u64 = 3;
-const ENTRY_NO_CACHE: u64 = 4;
-const ENTRY_ACCESSED: u64 = 5;
-const ENTRY_DIRTY: u64 = 6;
-const ENTRY_HUGE_PAGE: u64 = 7;
-const ENTRY_GLOBAL: u64 = 8;
-const ENTRY_NO_EXECUTE: u64 = 63;
+use x86_64::{
+    PhysAddr,
+    registers::control::Cr3,
+    structures::paging::{
+        FrameAllocator, FrameDeallocator, OffsetPageTable, PageTable, PageTableFlags,
+        PhysFrame, Size4KiB,
+    },
+};
 lazy_static! {
-    pub static ref KERNEL_PAGE_FLAGS: PageTableFlags =
-          PageTableFlags::ACCESSED
+    pub static ref KERNEL_PAGE_FLAGS: PageTableFlags = PageTableFlags::GLOBAL
+        | PageTableFlags::ACCESSED
+        | PageTableFlags::WRITE_THROUGH
         | PageTableFlags::WRITABLE
         | PageTableFlags::PRESENT;
-}
-impl Entry {
-    pub fn new(
-        present: bool,
-        writable: bool,
-        user_accessible: bool,
-        write_through: bool,
-        no_cache: bool,
-        accessed: bool,
-        dirty: bool,
-        huge_page: bool,
-        global: bool,
-        no_execute: bool,
-        frame_address: PhysAddr,
-    ) -> Entry {
-        Self(
-            ((present as u64) << ENTRY_PRESENT)
-                | ((writable as u64) << ENTRY_WRITABLE)
-                | ((user_accessible as u64) << ENTRY_USER_ACCESSIBLE)
-                | ((write_through as u64) << ENTRY_WRITE_THROUGH)
-                | ((no_cache as u64) << ENTRY_NO_CACHE)
-                | ((accessed as u64) << ENTRY_ACCESSED)
-                | ((dirty as u64) << ENTRY_DIRTY)
-                | ((huge_page as u64) << ENTRY_HUGE_PAGE)
-                | ((global as u64) << ENTRY_GLOBAL)
-                | ((no_execute as u64) << ENTRY_NO_EXECUTE)
-                | (frame_address.as_u64() & 0x000f_ffff_ffff_f000) as u64,
-        )
-    }
-    fn empty() -> Entry {
-        Entry(0)
-    }
-    fn default_kernel(frame_address: PhysAddr) -> Entry {
-        Entry::new(
-            true,
-            true,
-            false,
-            true,
-            false,
-            false,
-            false,
-            false,
-            true,
-            false,
-            frame_address,
-        )
-    }
-    fn default_user(frame_address: PhysAddr) -> Entry {
-        Entry::new(
-            true,
-            true,
-            true,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            frame_address,
-        )
-    }
+    pub static ref USER_PAGE_FLAGS: PageTableFlags = PageTableFlags::ACCESSED
+        | PageTableFlags::USER_ACCESSIBLE
+        | PageTableFlags::WRITABLE
+        | PageTableFlags::PRESENT;
 }
 pub fn get_current_pml4<'a>() -> *mut PageTable {
     physical_to_virtual_address(Cr3::read().0.start_address().as_u64()) as *mut PageTable
 }
 pub fn get_offset_table<'a>(table: &'a mut PageTable) -> OffsetPageTable<'a> {
-    unsafe {OffsetPageTable::new(table, x86_64::VirtAddr::new(mapping::DIRECT_PHYSICAL))}
+    unsafe { OffsetPageTable::new(table, x86_64::VirtAddr::new(mapping::DIRECT_PHYSICAL)) }
 }
-struct ManagedPageTable {
-}
+pub struct ManagedPageTable(*mut PageTable);
 impl ManagedPageTable {
-    fn map_to(self: &mut Self, from: PhysFrame, to: VirtAddr) {
-    }
-    fn flush(self: &mut Self) {
-
+    pub fn new() -> ManagedPageTable {
+        let mut pfa = PAGE_FRAME_ALLOCATOR.lock();
+        ManagedPageTable(physical_to_virtual_address(pfa.as_mut().expect("page frame allocator not initialised before managed page table initialisation!").allocate_frame().expect("failed to allocate frame during managed page table initialisation!").start_address().as_u64()) as *mut PageTable)
     }
 }
-pub fn initialise(_boot_info: &mut BootInfo) {
-    
+impl Drop for ManagedPageTable {
+    fn drop(&mut self) {
+        let mut pfa_guard = PAGE_FRAME_ALLOCATOR.lock();
+        let pfa = pfa_guard
+            .as_mut()
+            .expect("page frame allocator not initialised before managed page table dropping!");
+        fn free_page_table_level(
+            table_frame: PhysFrame<Size4KiB>,
+            level: u8,
+            pfa: &mut impl FrameDeallocator<Size4KiB>,
+        ) {
+            let table_virt = physical_to_virtual_address(table_frame.start_address().as_u64());
+            let table = unsafe { &mut *(table_virt as *mut PageTable) };
+            for entry in table.iter_mut() {
+                if !entry.flags().contains(PageTableFlags::PRESENT) {
+                    continue;
+                }
+                match level {
+                    3 => unreachable!(
+                        "attempted to call free_page_table_level helper function on to-level pml4 during page table dropping!"
+                    ),
+                    2 => {
+                        let pml2_frame = PhysFrame::containing_address(entry.addr());
+                        free_page_table_level(pml2_frame, 1, pfa);
+                        entry.set_unused();
+                    }
+                    1 => {
+                        let pml1_frame = PhysFrame::containing_address(entry.addr());
+                        free_page_table_level(pml1_frame, 0, pfa);
+                        entry.set_unused();
+                    }
+                    0 => {
+                        entry.set_unused();
+                    }
+                    _ => unreachable!(
+                        "attempted to call free_page_table_level helper function on invalid page table level!"
+                    ),
+                }
+            }
+            unsafe { pfa.deallocate_frame(table_frame) };
+        }
+        let pml4_frame =
+            PhysFrame::containing_address(PhysAddr::new(self.0 as u64 - mapping::DIRECT_PHYSICAL));
+        for i in 0..256 {
+            let entry = &mut unsafe { &mut *self.0 }[i];
+            if entry.flags().contains(PageTableFlags::PRESENT) {
+                let pdpt_frame = PhysFrame::containing_address(entry.addr());
+                free_page_table_level(pdpt_frame, 2, pfa);
+                entry.set_unused();
+            }
+        }
+        unsafe { pfa.deallocate_frame(pml4_frame) };
+    }
 }
+unsafe impl Send for ManagedPageTable {}
+unsafe impl Sync for ManagedPageTable {}

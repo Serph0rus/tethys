@@ -24,9 +24,9 @@ track ownership of filesystem servers & messages
 solidify syscall interface
 system stacks
 implement userspace-kernelspace separation for preemption in proc.rs
+managed page tables for processes
 // complete ^^
 // to do \/ \/
-managed page tables for processes
 thread-local storage
 switch into process
 syscall testing
