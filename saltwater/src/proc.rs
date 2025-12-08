@@ -90,6 +90,7 @@ pub struct ExecutionContext {
     pub instruction_pointer: u64,
     pub rflags: u64,
     pub debug: [u64; 8],
+    pub segment_base: u64,
 }
 pub struct Thread {
     pub user_context: ExecutionContext,
@@ -100,7 +101,6 @@ pub struct Thread {
     pub inherited_priority: u64,
     pub kernel_stack: SyscallStack,
     pub panic_vectors: PanicVectors,
-    pub fs_base: u64,
 }
 pub struct Process {
     pub set_priority: AtomicU64,
@@ -149,12 +149,14 @@ impl Process {
                 instruction_pointer: 0,
                 rflags: 0,
                 debug: [0; 8],
+                segment_base: 0,
             },
             handler_context: ExecutionContext {
                 registers: [0; 16],
                 instruction_pointer: 0,
                 rflags: 0,
                 debug: [0; 8],
+                segment_base: 0,
             },
             aborted: true,
             set_priority: 0,
@@ -180,7 +182,6 @@ impl Process {
                 control: 0,
                 security: 0,
             },
-            fs_base: 0,
         }));
         threads_write.push(new_thread.clone());
         new_thread
